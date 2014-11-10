@@ -1,0 +1,6 @@
+PeakSeg: Peak detection via constrained optimal Segmentation
+
+This repository contains the code to make the results from the 4-page
+paper and poster accepted for presentation at the
+[[http://www.mlcb.org/previous/mlcb2014/machine-learning-in-computational-biology][NIPS
+2014 workshop on machine learning in computational biology]].
