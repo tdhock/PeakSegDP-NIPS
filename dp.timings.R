@@ -10,7 +10,7 @@ count.files <- read.table(u, header=TRUE)
 maxPeaks <- 9L
 dp.timings <- NULL
 
-for(file.i in seq_along(count.files)){
+for(file.i in 1:nrow(count.files)){
   f <- count.files$file[[file.i]]
   chunk.id.dir <- dirname(paste(f))
   chunk.id <- basename(chunk.id.dir)
