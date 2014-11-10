@@ -4,3 +4,19 @@ This repository contains the code to make the results from the 4-page
 paper and poster accepted for presentation at the
 [[http://www.mlcb.org/previous/mlcb2014/machine-learning-in-computational-biology][NIPS
 2014 workshop on machine learning in computational biology]].
+
+To make sure to use the same package versions, please install the
+=works_with_R= function by copying the code in [[file:works_with.R]] to
+your ~/.Rprofile which will load it at the beginning of every R
+session.
+
+Then type "make" to run the code. There are two big steps:
+
+1. Download the ChIP-seq benchmark data set from
+   http://cbio.ensmp.fr/~thocking/chip-seq-chunk-db/
+
+2. Run the https://github.com/tdhock/PeakSegDP algorithm on each
+   profile in the benchmark.
+
+On my computer it took about 1 week (using one 1.6GHz CPU) to run the
+PeakSegDP algorithm on all the profiles in the benchmark.
