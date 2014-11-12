@@ -26,5 +26,5 @@ dp.peaks.optimal.RData: dp.peaks.optimal.R dp.peaks.matrices.RData
 	R --no-save < $<
 dp.peaks.intervals.RData: dp.peaks.intervals.R dp.peaks.optimal.RData
 	R --no-save < $<
-dp.peaks.regression.RData: dp.peaks.regression.R dp.peaks.intervals.RData
+dp.peaks.regression.RData: dp.peaks.regression.R dp.peaks.intervals.RData dp.peaks.sets.RData
 	R --no-save < $<
