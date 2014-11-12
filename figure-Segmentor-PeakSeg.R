@@ -1,6 +1,6 @@
 works_with_R("3.1.1", 
              "tdhock/PeakError@d9196abd9ba51ad1b8f165d49870039593b94732",
-             "tdhock/PeakSegDP@8f724b41df77542b7dfda7bf3045aef906ddbf80",
+             "tdhock/PeakSegDP@5bcee97f494dcbc01a69e0fe178863564e9985bc",
              "tdhock/ggplot2@aac38b6c48c016c88123208d497d896864e74bd7",
              Segmentor3IsBack="1.8")
 
