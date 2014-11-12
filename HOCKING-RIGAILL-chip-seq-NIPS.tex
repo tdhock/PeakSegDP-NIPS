@@ -318,15 +318,16 @@ approach yields state-of-the-art test error rates for peak detection
 in a benchmark that includes both H3K4me3 and H3K36me3 data
 sets.
 
-PeakSeg is the first supervised peak detection algorithm. It has been
-explicitly designed to take advantage of the annotated region data
-proposed by \citet{hocking2014visual}. PeakSeg is also the first
-algorithm to exhibit state-of-the-art accuracy on both sharp H3K4me3
-and broad H3K36me3 ChIP-seq profiles. In the future, even better
-accuracy may be obtained by engineering better features $\mathbf x_i$
-for the penalty learning problem (\ref{eq:relax}), perhaps based on
-Poisson segmentation model selection theory
-\citep{cleynen2013segmentation}.
+Although it has been previously proposed to train a peak detector
+using a set of positive control peak regions \citep{DFilter}, PeakSeg
+is the first algorithm that can be trained with both positive and
+negative control regions. PeakSeg is also the first algorithm to
+exhibit state-of-the-art accuracy on both sharp H3K4me3 and broad
+H3K36me3 ChIP-seq profiles in the benchmark of
+\citet{hocking2014visual}. In the future, even better accuracy may be
+obtained by engineering better features $\mathbf x_i$ for the penalty
+learning problem (\ref{eq:relax}), perhaps based on Poisson
+segmentation model selection theory \citep{cleynen2013segmentation}.
 
 The current implementation of PeakSeg using dynamic programming has
 one major limitation. The $O(s_{\text{max}} d^2)$ time complexity has
