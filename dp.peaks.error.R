@@ -18,20 +18,23 @@ for(region.i in seq_along(dp.peaks)){
   for(cell.type in names(type.list)){
     one.type <- type.list[[cell.type]]
     region.samples <- split(one.type, one.type$sample.id, drop=TRUE)
-    type.df <- NULL
+    type.df.list <- list()
     some.samples <- intersect(names(peak.samples), names(region.samples))
     for(sample.id in some.samples){
       regions <- region.samples[[sample.id]]
       peak.list <- peak.samples[[sample.id]]
       for(peaks.str in names(peak.list)){
         peak.df <- peak.list[[peaks.str]]
+        if(is.null(peak.df)){
+          cat(paste(region.str, sample.id, peaks.str, "peaks\n"))
+          peak.df <- Peaks()
+        }
         err.df <- PeakErrorChrom(peak.df, regions)
-        type.df <- rbind(type.df, {
+        type.df.list[[paste(sample.id, peaks.str)]] <- 
           data.frame(sample.id, param.name=as.character(peaks.str), err.df)
-        })
       }
     }
-    chunk.list[[cell.type]] <- type.df
+    chunk.list[[cell.type]] <- do.call(rbind, type.df.list)
   }
   dp.peaks.error[[region.str]] <- chunk.list
 }

@@ -1,7 +1,7 @@
 works_with_R("3.1.1",
              "tdhock/PeakError@d9196abd9ba51ad1b8f165d49870039593b94732")
 
-files <- Sys.glob("benchmark/*/*/*/dp.model.RData")
+files <- Sys.glob("data/*/*/dp.model.RData")
 
 ## Parse the first occurance of pattern from each of several strings
 ## using (named) capturing regular expressions, returning a matrix
@@ -24,9 +24,7 @@ str_match_perl <- function(string,pattern){
 }
 
 pattern <-
-  paste0(
-         "(?<sample_id>McGill[0-9]{4})",
-         "/",
+  paste0("data/",
          "(?<set_name>.+?)",
          "/",
          "(?<chunk_id>[0-9]+)")
@@ -34,19 +32,16 @@ matched <- str_match_perl(files, pattern)
 dp.peaks <- list()
 for(file.i in seq_along(files)){
   r <- matched[file.i, ]
-  sample.id <- r[["sample_id"]]
   set.name <- r[["set_name"]]
   chunk.id <- r[["chunk_id"]]
   regions.str <- paste0(set.name, "/", chunk.id)
   f <- files[[file.i]]
   cat(sprintf("%4d / %4d %s\n", file.i, length(files), f))
   load(f)
-  peaks <- subset(dp.model, status=="peak")
-  peak.list <- lapply(split(peaks, peaks$peaks), function(x){
-    x[, c("chromStart", "chromEnd")]
-  })
-  peak.list[["0"]] <- Peaks()
-  dp.peaks[[regions.str]][[sample.id]] <- peak.list
+  for(sample.id in names(dp.model)){
+    peak.list <- dp.model[[sample.id]]$peaks
+    dp.peaks[[regions.str]][[sample.id]] <- peak.list
+  }
 }
 
 save(dp.peaks, file="dp.peaks.RData")

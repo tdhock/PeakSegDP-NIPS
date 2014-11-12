@@ -1,5 +1,5 @@
 works_with_R("3.1.1",
-             "tdhock/PeakSegDP@8f724b41df77542b7dfda7bf3045aef906ddbf80",
+             "tdhock/PeakSegDP@5bcee97f494dcbc01a69e0fe178863564e9985bc",
              data.table="1.9.3")
 
 library(parallel)
@@ -18,6 +18,7 @@ for(file.i in 1:nrow(count.files)){
   set.name <- basename(set.dir)
   u <- paste0(prefix, f)
   local.f <- file.path("data", f)
+  print(local.f)
   if(!file.exists(local.f)){
     local.dir <- dirname(local.f)
     dir.create(local.dir, showWarnings=FALSE, recursive=TRUE)
@@ -39,9 +40,10 @@ for(file.i in 1:nrow(count.files)){
       compressed <- sample.list[[sample.id]]
       bases <- sum(compressed$bases)
       n.data <- nrow(compressed)
-      cat(sprintf("%4d / %4d chunks %4d / %4d samples %d bases %d data\n",
+      cat(sprintf("%4d / %4d chunks %4d / %4d sample %s %d bases %d data\n",
                   file.i, nrow(count.files),
                   sample.i, length(sample.list),
+                  sample.id,
                   bases, n.data))
       result <- list()
       seconds <- system.time({
