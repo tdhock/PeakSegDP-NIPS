@@ -1,4 +1,5 @@
-works_with_R("3.1.1", PeakSeg="1.0")
+works_with_R("3.1.1",
+             "tdhock/PeakSegDP@5bcee97f494dcbc01a69e0fe178863564e9985bc")
 
 load("dp.peaks.optimal.RData")
 load("dp.peaks.matrices.RData")
@@ -12,11 +13,13 @@ for(set.name in names(dp.peaks.matrices)){
     error.mat <- matrices[[chunk.name]]$PeakSeg
     chunk.intervals <- NULL
     chunk.features <- NULL
+    counts.file <- sprintf("data/%s/counts.RData", chunk.name)
+    print(counts.file)
+    load(counts.file)
+    counts.list <- split(counts, counts$sample.id)
     for(sample.id in names(optimal.list)){
-      coverage.file <-
-        sprintf("benchmark/%s/%s/coverage.RData", sample.id, chunk.name)
-      load(coverage.file)
-      one.feature <- with(coverage, {
+      sample.counts <- counts.list[[sample.id]]
+      one.feature <- with(sample.counts, {
         cbind(log.max.coverage=log(max(coverage)),
               log.total.weight=log(sum(chromEnd-chromStart)))
       })
