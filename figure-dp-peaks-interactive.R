@@ -175,7 +175,7 @@ viz <-
                       clickSelects=test.chunk,
                       showSelected=testSet),
                   data=competitors, size=5, alpha=0.6)+
-       geom_text(aes(50, 80, color=algorithm,
+       geom_text(aes(80, 100, color=algorithm,
                      label=paste0("selected parameter=", param.name),
                      showSelected=testSet),
                  data=baselines)+
@@ -190,7 +190,7 @@ viz <-
        facet_grid(.~competitor, labeller=label_both)+
        coord_equal()+
        geom_segment(aes(x, y, xend=xend, yend=yend),
-                   data=data.frame(x=0, y=0, xend=75, yend=75)),
+                   data=data.frame(x=0, y=0, xend=100, yend=100)),
 
        roc=ggplot()+
        theme_animint(width=300, height=300)+
@@ -214,7 +214,7 @@ viz <-
        
        extrapolation=ggplot()+
        theme_animint(width=300, height=300)+
-       geom_text(aes(5, 15.5, label=testSet,
+       geom_text(aes(5, 16.5, label=testSet,
                      showSelected=testSet),
                  data=psplits)+
        ggtitle("PeakSeg model feature space")+
@@ -229,7 +229,7 @@ viz <-
        geom_polygon(aes(log.max.coverage, log.total.weight, group=test.chunk,
                         showSelected=testSet,
                         clickSelects=test.chunk),
-                    data=dp.peaks.polygon, alpha=6/10)+
+                    data=dp.peaks.polygon, alpha=6/10, size=3)+
        ## geom_segment(aes(log.max.coverage, log.total.weight,
        ##                  xend=log.max.coverage.end, yend=log.total.weight.end,
        ##                  showSelected=testSet,
@@ -250,8 +250,9 @@ viz <-
                  data=test.pred)+
        guides(fill=guide_legend(
                 override.aes=list(alpha=1/2)))+
-       scale_fill_manual(values=c(train="red", test="black"))+
-       scale_color_gradient2("log.penalty", low="white", high="blue"),
+       ##scale_color_gradient("log.penalty", low="white", high="blue")+
+       scale_color_gradient2("log.penalty")+
+       scale_fill_manual(values=c(train="red", test="black")),
 
        profile=ggplot()+
        geom_text(aes(0, 1, label=sprintf("%s max=%d", sample.id, max.coverage),
@@ -319,6 +320,10 @@ viz <-
                      showSelected2=sample.id),
                  data=dp.peaks.interactive$profiles,
                  color="grey"),
+
+       first=list(testSet="H3K36me3_TDH_immune split 5",
+         test.chunk="H3K36me3_TDH_immune/3",
+         sample.id="McGill0101"),
 
        title="Peak detection model comparison")
 
