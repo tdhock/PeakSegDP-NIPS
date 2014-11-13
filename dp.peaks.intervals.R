@@ -26,6 +26,9 @@ for(set.name in names(dp.peaks.matrices)){
       optimal.df <- optimal.list[[sample.id]]
       param.name <- as.character(optimal.df$model.complexity)
       optimal.df$error <- error.mat[sample.id, param.name]
+      if(any(is.na(optimal.df$error))){
+        stop("NA error")
+      }
       indices <- with(optimal.df, {
         largestContinuousMinimum(error, max.log.lambda-min.log.lambda)
       })

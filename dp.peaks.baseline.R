@@ -1,65 +1,29 @@
+works_with_R("3.1.1", dplyr="0.2")
+
 load("dp.peaks.sets.RData")
 load("dp.peaks.matrices.RData")
 
-pick.best.index <- structure(function
-### Minimizer for local models, described in article section 2.3
-### "Picking the optimal model"
-(err
-### Vector of errors to minimize.
- ){
-  nparam <- length(err)
-  candidates <- which(err==min(err))
-  if(length(err)==1)return(candidates)
-  st <- abs(median(candidates)-candidates)
-  middle <- candidates[which.min(st)]
-  if(all(diff(err)==0))return(middle)
-  if(nparam %in% candidates && 1 %in% candidates){
-    cat("Warning: strange error profile, picking something near the center\n")
-    print(as.numeric(err))
-    d <- diff(candidates)>1
-    if(any(d)){
-      which(d)[1]
-    }else{
-      middle
-    }
-  }else if(1 %in% candidates){
-    max(candidates)
-  }else if(nparam %in% candidates){
-    min(candidates)
-  }else {
-    middle
-  }
-### Integer index of the minimal error.
-},ex=function(){
-  stopifnot(pick.best.index(rep(0,100))==50)
-
-  err <- rep(1,100)
-  err[5] <- 0
-  stopifnot(pick.best.index(err)==5)
-
-  ## should pick the middle
-  err <- rep(1,100)
-  err[40:60] <- 0
-  stopifnot(pick.best.index(err)==50)
-
-  ## should pick the biggest
-  err <- rep(1,100)
-  err[1:60] <- 0
-  stopifnot(pick.best.index(err)==60)
-
-  ## should pick the smallest
-  err <- rep(1,100)
-  err[50:100] <- 0
-  stopifnot(pick.best.index(err)==50)
-})
+source("pick.best.index.R")
 
 dp.peaks.baseline <- NULL
+dp.peaks.baseline.roc <- list()
+dp.peaks.baseline.chosen <- list()
 for(set.name in names(dp.peaks.sets)){
   train.sets <- dp.peaks.sets[[set.name]]
   error.list <- dp.peaks.matrices[[set.name]]
+  fp.list <- dp.peaks.matrices.fp[[set.name]]
+  tp.list <- dp.peaks.matrices.tp[[set.name]]
   for(set.i in seq_along(train.sets)){
     train.chunks <- train.sets[[set.i]]
     test.chunks <- names(error.list)[!names(error.list) %in% train.chunks]
+    test.possible.tp <- 0
+    test.possible.fp <- 0
+    for(test.chunk in test.chunks){
+      test.possible.tp <-
+        test.possible.tp + sum(tp.list[[test.chunk]]$possible.tp)
+      test.possible.fp <-
+        test.possible.fp + sum(fp.list[[test.chunk]]$possible.fp)
+    }
     for(algorithm in c("hmcan.broad.trained", "macs.trained")){
       train.mat <- NULL
       for(train.chunk in train.chunks){
@@ -69,19 +33,38 @@ for(set.name in names(dp.peaks.sets)){
       picked <- pick.best.index(error.curve)
       test.mat <- NULL
       test.regions <- NULL
+      test.fp <- NULL
+      test.tp <- NULL
       for(test.chunk in test.chunks){
+        test.fp <- rbind(test.fp, fp.list[[test.chunk]][[algorithm]])
+        test.tp <- rbind(test.tp, tp.list[[test.chunk]][[algorithm]])
         test.mat <- rbind(test.mat, error.list[[test.chunk]][[algorithm]])
         test.regions <- c(test.regions, error.list[[test.chunk]]$regions)
       }
+      param.name <- colnames(test.tp)
+      tp.fp <-
+        data.frame(set.name, set.i,
+                   algorithm, param.name,
+                   tp=colSums(test.tp),
+                   fp=colSums(test.fp)) %.%
+        mutate(TPR=tp/test.possible.tp,
+               FPR=fp/test.possible.fp)
+      tp.fp.chosen <- tp.fp[picked, ]
+      algo.code <- paste(set.name, set.i, algorithm)
+      dp.peaks.baseline.roc[[algo.code]] <- tp.fp
+      dp.peaks.baseline.chosen[[algo.code]] <- tp.fp.chosen
       errors <- sum(test.mat[,picked])
       regions <- sum(test.regions)
       dp.peaks.baseline <- rbind(dp.peaks.baseline, {
         data.frame(set.name, set.i, algorithm,
-                   param.name=colnames(train.mat)[picked],
+                   param.name=param.name[picked],
                    errors, regions)
       })
     }
   }
 }
 
-save(dp.peaks.baseline, file="dp.peaks.baseline.RData")
+save(dp.peaks.baseline,
+     dp.peaks.baseline.roc,
+     dp.peaks.baseline.chosen,
+     file="dp.peaks.baseline.RData")

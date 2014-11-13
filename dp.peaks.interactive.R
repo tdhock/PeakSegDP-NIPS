@@ -36,6 +36,11 @@ test.chunks <-
   as.character(unique(data.list$regressionParams$test.chunk))
 baseline.regions <- list()
 baseline.peaks <- list()
+## Note that there are 125 test.chunks (out of 129 chunks total in the
+## benchmark database,
+## http://cbio.ensmp.fr/~thocking/chip-seq-chunk-db/file-rows.html)
+## since we randomly chose 1/2 train, 1/2 test, 6 times in
+## dp.peaks.sets, there are 4 chunks which appear in no test set.
 for(test.chunk.i in seq_along(test.chunks)){
   test.chunk <- test.chunks[[test.chunk.i]]
   cat(sprintf("%4d / %4d %s\n", test.chunk.i, length(test.chunks), test.chunk))
@@ -68,6 +73,8 @@ dp.peaks.interactive$chunks <- chunks %.%
          bases=expandEnd-expandStart) %.%
   filter(test.chunk %in% test.chunks)
 rownames(dp.peaks.interactive$chunks) <- dp.peaks.interactive$chunks$test.chunk
+all.peak.list <- list()
+all.region.list <- list()
 for(testSet.i in seq_along(testSets)){
   testSet <- testSets[[testSet.i]]
   cat(sprintf("%4d / %4d %s\n", testSet.i, length(testSets), testSet))
@@ -85,32 +92,29 @@ for(testSet.i in seq_along(testSets)){
     peak.meta <- data.frame(testSet, test.chunk)
     test.samples <- chunk.list[[test.chunk]]
     test.sample.ids <- as.character(test.samples$sample.id)
+    counts.file <- sprintf("data/%s/counts.RData", test.chunk)
+    load(counts.file)
+    counts.list <- split(counts, counts$sample.id)
     for(sample.i in 1:nrow(test.samples)){
       s <- test.samples[sample.i, ]
       sample.id <- as.character(s$sample.id)
-      coverage.file <- 
-        sprintf("benchmark/%s/%s/coverage.RData",
-                s$sample.id, test.chunk)
-      if(!coverage.file %in% names(profile.list)){
-        load(coverage.file)
-        profile.list[[coverage.file]] <-
-          data.frame(test.chunk, sample.id, coverage[, -1])
-      }
+      sample.coverage <- counts.list[[sample.id]]
+      cov.cols <- c("chromStart", "chromEnd", "coverage")
+      profile.list[[paste(test.chunk, sample.id)]] <-
+        data.frame(test.chunk, sample.id, sample.coverage[, cov.cols])
       peaks.by.sample <- dp.peaks[[test.chunk]]
       dp.models <- peaks.by.sample[[sample.id]]
       param.name <- as.character(s$peaks)
       dp.param.peaks <- dp.models[[param.name]]
-      if(nrow(dp.param.peaks)){
-        dp.peaks.interactive$peaks <- rbind(dp.peaks.interactive$peaks, {
+      this.id <- paste(testSet, test.chunk, sample.id, "PeakSeg")
+      if(!is.null(dp.param.peaks) && nrow(dp.param.peaks)){
+        all.peak.list[[this.id]] <- 
           normDF(peak.meta, algorithm="PeakSeg", sample.id,
-                 dp.param.peaks)
-        })
+                 dp.param.peaks[, c("chromStart", "chromEnd")])
       }
       selected.error <- region.list[[test.chunk]][[sample.id]][[param.name]]
-      dp.peaks.interactive$regionErrors <- 
-        rbind(dp.peaks.interactive$regionErrors, {
-          normDF(peak.meta, algorithm="PeakSeg", selected.error)
-        })
+      all.region.list[[this.id]] <- 
+        normDF(peak.meta, algorithm="PeakSeg", selected.error)
     }
     for(algorithm.i in 1:nrow(baselines)){
       baseline <- baselines[algorithm.i, ]
@@ -119,21 +123,22 @@ for(testSet.i in seq_along(testSets)){
       error.by.param <- baseline.regions[[test.chunk]][[algorithm]]
       selected.error <-
         subset(error.by.param[[param.name]], sample.id %in% test.sample.ids)
-      dp.peaks.interactive$regionErrors <-
-        rbind(dp.peaks.interactive$regionErrors, {
-          normDF(peak.meta, algorithm, selected.error)
-        })
+      this.id <- paste(testSet, test.chunk, sample.id, algorithm)
+      all.region.list[[this.id]] <-
+        normDF(peak.meta, algorithm, selected.error)
       peaks <- baseline.peaks[[test.chunk]][[algorithm]]
       param.peaks <- peaks[[param.name]]
       if(nrow(param.peaks)){
         selected.peaks <- subset(param.peaks, sample.id %in% test.sample.ids)
-        dp.peaks.interactive$peaks <- rbind(dp.peaks.interactive$peaks, {
+        all.peak.list[[this.id]] <- 
           normDF(peak.meta, algorithm, selected.peaks)
-        })
       }
     }#algorithm
   }#test chunk
 }
+
+dp.peaks.interactive$peaks <- do.call(rbind, all.peak.list)
+dp.peaks.interactive$regionErrors <- do.call(rbind, all.region.list)
 
 ## We will only display profiles in a plot that is 1000 pixels wide,
 ## so there is no need to get 254,451 data points. 

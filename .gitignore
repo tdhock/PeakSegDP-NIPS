@@ -1,3 +1,11 @@
 *~
 .Rhistory
 auto
+*.RData
+*.aux
+*.blg
+*.bbl
+*.out
+*.log
+figure-*.png
+figure-*.pdf
