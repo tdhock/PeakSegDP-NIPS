@@ -19,4 +19,5 @@ Then type "make" to run the code. There are two big steps:
    profile in the benchmark.
 
 On my computer it took about 1 week (using one 1.6GHz CPU) to run the
-PeakSegDP algorithm on all the profiles in the benchmark.
+PeakSegDP algorithm on all the profiles in the benchmark. The outputs
+are the [[https://github.com/tdhock/PeakSegDP-NIPS/blob/master/HOCKING-RIGAILL-chip-seq-NIPS.pdf?raw%3Dtrue][PDF]], the [[http://cbio.ensmp.fr/~thocking/figure-dp-peaks-interactive/index.html][interactive figure]], and the poster.
