@@ -9,6 +9,8 @@ figure-Segmentor-PeakSeg.png: figure-Segmentor-PeakSeg.R
 	R --no-save < $<
 figure-dp-peaks-regression-dots.pdf: figure-dp-peaks-regression-dots.R dp.peaks.regression.RData dp.peaks.baseline.RData
 	R --no-save < $<
+figure-dp-timings.pdf: figure-dp-timings.R dp.timings.RData
+	R --no-save < $<
 
 dp.peaks.baseline.RData: dp.peaks.baseline.R dp.peaks.sets.RData
 	R --no-save < $<

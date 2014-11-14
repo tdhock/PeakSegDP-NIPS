@@ -44,7 +44,7 @@
   peaks. We propose to tune it using annotated regions in a supervised
   penalty function learning problem, which we show results in
   state-of-the-art peak detection for both sharp H3K4me3 and broad
-  H3K36me3 data types.
+  H3K36me3 data types. 
 \end{abstract}
 
 \section{Introduction to supervised ChIP-seq peak detection}
@@ -208,11 +208,13 @@ constraint is necessary to detect peaks for models with $s\in\{5, 7\}$
 segments. We propose to use dynamic programming to compute the
 sequence of maximum likelihood models $\mathbf{\tilde m}^1(\mathbf y),
 \dots, \mathbf{\tilde m}^{s_{\text{max}}}(\mathbf y)$ satisfying this
-up-down constraint.  The algorithm is in $O(s_{\text{max}} d^2)$ time,
-where $d$ is the number of data points, using the compression scheme
-proposed by \citet{Segmentor}.
+up-down constraint\footnote{An R package implementing the 
+  dynamic programming is available at
+  \url{https://github.com/tdhock/PeakSegDP}}. The algorithm is in
+$O(s_{\text{max}} d^2)$ time, where $d$ is the number of data points,
+using the compression scheme proposed by \citet{Segmentor}.
 
-\section{Supervised PeakSeg: learning a penalty function}
+\section{Supervised PeakSeg: learning a penalty function using several ChIP-seq profiles}
 \label{sec:supervised}
 
 After computing the constrained maximum likelihood segmentations for
@@ -258,28 +260,25 @@ y)$, and finally the predicted peaks $\mathbf P\left[ \mathbf{\tilde
 
 \section{Results: state-of-the-art peak detection for two data types}
 
-We downloaded 7 benchmark annotated region data
-sets.\footnote{\url{http://cbio.ensmp.fr/~thocking/chip-seq-chunk-db/}}
-Since the DP solver that we implemented has $O(s_{\text{max}} d^2)$
-time complexity, we considered only the subset of samples which had at
-most $d\leq 100,000$ data points to segment in each labeled genomic
-window. This left a database of 4,628 annotated regions
-% sum(unlist(sapply(dp.peaks.matrices, sapply, function(x)sum(x$regions))))
-(out of 12,826 annotated regions in the entire benchmark). Finally,
-since these genomic windows are relatively small, we set the maximum
+We downloaded 7 benchmark data sets, which included a
+total of 12,826 manually annotated regions
+\footnote{\url{http://cbio.ensmp.fr/~thocking/chip-seq-chunk-db/}}.
+Since these genomic windows are relatively small, we set the maximum
 number of segments $s_{\text{max}}=19$, and for each profile $\mathbf
 y$ we computed $\mathbf{\tilde m}^1(\mathbf y), \dots, \mathbf{\tilde
   m}^{19}(\mathbf y)$ (\ref{argmin:constrained}). For the largest
-profile we considered ($d=88,509$ data points), the DP algorithm
-computed the 19 constrained optimal segmentations in 27 minutes.
+profile we considered ($d=263,169$ weighted data points after
+compression), the DP algorithm computed the 19 constrained optimal
+segmentations in about 155 minutes.
 
 We compared the proposed PeakSeg algorithm to the two previous
-state-of-the-art peak detectors, macs and \mbox{hmcan.broad}. For each
-data set, we randomly divided the annotated windows into half train
-and half test. We trained the macs and hmcan.broad algorithms by
-choosing the significance threshold with minimal annotation error on
-the train set. We trained PeakSeg by learning a penalty function $\hat f$
-on the train set (\ref{eq:relax}).
+state-of-the-art peak detectors on this benchmark, macs and
+\mbox{hmcan.broad}. For each data set, we randomly divided the
+annotated windows into half train and half test. We trained the macs
+and hmcan.broad algorithms by choosing the significance threshold with
+minimal annotation error on the train set. We trained PeakSeg by
+learning a penalty function $\hat f$ on the train set
+(\ref{eq:relax}).
 
 We show the percent test error for each algorithm and each data set in
 Figure~\ref{fig:test-error}. As previously described
@@ -331,13 +330,12 @@ segmentation model selection theory \citep{cleynen2013segmentation}.
 
 The current implementation of PeakSeg using dynamic programming has
 one major limitation. The $O(s_{\text{max}} d^2)$ time complexity has
-limited its application to subsets of chromosomes with $d\leq 100,000$
-data points to segment. In comparison, the largest chromosome subset
-in the benchmark has $d=254,451$ data points, and the largest
-chromosome in hg19 (chr1) has $d=249,250,621$ base pairs. To apply
-PeakSeg to these larger data sets, we are investigating a constrained
-version of pruned dynamic programming \citep{pruned-dp, Segmentor},
-which has $O(s_{\text{max}} d\log d)$ time complexity.
+limited its application to subsets of chromosomes of up to $d=263,169$
+data points. In comparison, the largest chromosome in hg19 (chr1) has
+$d=249,250,621$ base pairs. To apply PeakSeg to larger data sets, we
+are investigating a constrained version of pruned dynamic programming
+\citep{pruned-dp, Segmentor}, which has $O(s_{\text{max}} d\log d)$
+time complexity.
 
 Finally, we are interested in segmenting multiple samples $i$ at the
 same time, since peaks are often observed in the same genomic location
