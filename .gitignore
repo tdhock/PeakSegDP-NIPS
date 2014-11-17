@@ -9,3 +9,8 @@ auto
 *.log
 figure-*.png
 figure-*.pdf
+tikzMetrics
+figure-*.tex
+intervalRegression.pdf
+Rplots.pdf
+*.autosave

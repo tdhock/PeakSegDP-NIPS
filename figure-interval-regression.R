@@ -237,6 +237,95 @@ extreme <- subset(intervals, log.max.count %in% range(log.max.count))
 extreme$max.log.lambda[1] <- 11
 extreme$min.log.lambda[2] <- extreme$predicted[2]
 
+## Plot the model that was selected by the large margin model.
+rownames(intervals) <- intervals$sample.id
+selected <- exact.dfs %.%
+  mutate(predicted=intervals[as.character(sample.id), "predicted"]) %.%
+  filter(min.log.lambda < predicted & predicted < max.log.lambda)
+
+profile.list <- list()
+for(sample.i in 1:nrow(selected)){
+  r <- selected[sample.i, ]
+  model.name <- paste0("PeakSeg", r$model.complexity)
+  print(model.name)
+  for(data.type in c("regions", "peaks")){
+    profile.list[[data.type]] <- rbind(profile.list[[data.type]], {
+      subset(PeakSeg4samples[[data.type]][[model.name]], sample.id==r$sample.id)
+    })
+  }
+}
+
+ann.colors <-
+  c(noPeaks="#f6f4bf",
+    peakStart="#ffafaf",
+    peakEnd="#ff4c4c",
+    peaks="#a445ee")
+
+selectedPlot <- 
+ggplot()+
+  geom_tallrect(aes(xmin=chromStart/1e3, xmax=chromEnd/1e3,
+                    fill=annotation),
+                data=profile.list$regions,
+                alpha=1/2)+
+  geom_step(aes(first.base/1e3, count),
+            data=PeakSeg4samples$signal, color="grey50")+
+  geom_point(aes(chromStart/1e3, 0),
+             data=profile.list$peaks,
+             pch=1, size=2, color="deepskyblue")+
+  geom_segment(aes(chromStart/1e3, 0,
+                   xend=chromEnd/1e3, yend=0),
+               data=profile.list$peaks, size=2, color="deepskyblue")+
+  coord_cartesian(xlim=c(118080, 118130))+
+  theme_bw()+
+  theme(panel.margin=grid::unit(0, "cm"))+
+  facet_grid(sample.id ~ ., scales="free")+
+  scale_y_continuous("aligned read coverage",
+                     labels=function(x){
+                       sprintf("%.1f", x)
+                     },
+                     breaks=function(limits){
+                       limits[2]
+                     })+
+  xlab("position on chr11 (kilo base pairs)")+
+  scale_fill_manual("annotation", values=ann.colors,
+                    breaks=names(ann.colors))
+
+png("figure-PeakSeg-4samples-intervals-selected.png",
+    units="in", res=200, width=7, height=5)
+print(selectedPlot)
+dev.off()
+ 
+p <- 
+ggplot()+
+  geom_segment(aes(min.log.lambda, log.max.count,
+                   xend=max.log.lambda, yend=log.max.count),
+               data=intervals, size=1.5)+
+  geom_segment(aes(min.log.lambda, log.max.count,
+                   xend=max.log.lambda, yend=log.max.count),
+               data=extreme, color="red")+
+  geom_line(aes(predicted, log.max.count), data=intervals, color="blue")+
+  geom_line(aes(bad.pred, log.max.count), data=intervals, color="blue")+
+  geom_vline(aes(xintercept=8.3), color="blue")+
+  geom_text(aes(8.6, 5.3, label="1 error\nconstant"))+
+  geom_text(aes(10.25, 5.3, label="0 errors\nsmall margin"))+
+  geom_text(aes(11.5, 5.3, label="0 errors\nlarge margin"))+
+  geom_point(aes(min.log.lambda, log.max.count), data=zero.error, size=5,pch="|")+
+  geom_point(aes(max.log.lambda, log.max.count), data=zero.error, size=5, pch="|")+
+  geom_text(aes((min.log.lambda + max.log.lambda)/2, log.max.count,
+                label=sprintf("%d peak%s", model.complexity,
+                  ifelse(model.complexity==1, "", "s")),
+                hjust=ifelse(is.finite(min.log.lambda), 0.5, 0)),
+            data=zero.error, vjust=-0.5, size=3)+
+  geom_text(aes(max.log.lambda, log.max.count, label=sample.id),
+            data=intervals, hjust=0)+
+  coord_cartesian(xlim=c(7.7, 13))+
+  ggtitle("max margin interval regression, margin in red")
+
+pdf("figure-PeakSeg-4samples-intervals.pdf", w=10)
+print(p)
+dev.off()
+ 
+## Plot the max margin regression line.
 text.df <- zero.error %.%
   ##filter(model.complexity != 3)
   mutate(label=sprintf("%d peak%s", model.complexity,

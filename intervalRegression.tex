@@ -1,4 +1,4 @@
-\documentclass{article}
+\documentclass[legalpaper]{article}
 \usepackage{tikz}
 %\usepackage{fullpage}
 \usepackage{amsmath,amssymb}
@@ -71,7 +71,42 @@ $
 \newpage
 
 \section*{Supervised PeakSeg: learning a penalty function}
+Reference: Hocking, Rigaill, et al. Learning Sparse Penalties for
+Change-point Detection using Max Margin Interval Regression. ICML
+2013.
 
+\begin{itemize}
+\item Given a positive penalty $\lambda\in\RR_+$, the optimal number
+  of segments is
+\begin{equation*} s^*(\lambda, \mathbf y) =
+    \argmin_{s\in\{1,3,\dots, s_{\text{max}}\}} \rho\left[
+      \mathbf{\tilde m}^s(\mathbf y), \mathbf y \right] + \lambda s.
+\end{equation*}
+\item Sample-specific penalty values $\log \lambda_i = f(\mathbf x_i)
+  = \beta + \mathbf w^\intercal \mathbf x_i$.
+\item An $m=2$-dimensional feature vector
+$\mathbf x_i = \left[\begin{array}{cc} \log\max \mathbf y_i & \log d_i
+\end{array}\right]$,\\ where $d_i$ is the number of base pairs for 
+sample $i$.
+\item For separable data:\\
 \input{figure-interval-regression}
+\item For real data: minimize a
+smooth convex loss $\ell_i:\RR\rightarrow\RR_+$ which depends on the
+annotated region data $R_i$:
+\begin{equation*}
+  \label{eq:relax}
+  \hat f = \argmin_f \sum_{i=1}^n
+  \ell_i\left[ f(\mathbf x_i) \right].
+\end{equation*}
+\end{itemize}
+To make a prediction on a
+test sample with profile $\mathbf y$ and features $\mathbf x$,
+\begin{itemize}
+\item Compute the predicted penalty $\hat \lambda = \exp \hat f(\mathbf x)$,
+\item the predicted number of segments $\hat s = s^*(\hat \lambda, \mathbf
+y)$, 
+\item and finally the predicted peaks $\mathbf P\left[ \mathbf{\tilde
+    m}^{\hat s}(\mathbf y) \right]$.
+\end{itemize}
 
 \end{document}
