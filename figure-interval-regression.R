@@ -1,0 +1,305 @@
+works_with_R("3.1.1",
+             "tdhock/PeakSegDP@5bcee97f494dcbc01a69e0fe178863564e9985bc",
+             "tdhock/ggplot2@aac38b6c48c016c88123208d497d896864e74bd7",
+             tikzDevice="0.7.0",
+             quadmod="2013.8.23",
+             dplyr="0.2",
+             "tdhock/animint@1246883c2cd75a773f598a12fca4a2af4c9160e9")
+
+load("PeakSeg4samples.RData")
+
+error.list <- PeakSeg4samples$regions
+errors <- NULL
+for(peaks in 0:4){
+  rname <- paste0("PeakSeg", peaks)
+  e <- error.list[[rname]] %.%
+    group_by(sample.id) %.%
+    summarise(errors=sum(fp+fn))
+  errors <- rbind(errors, data.frame(peaks, e))
+}
+
+loss.list <- split(PeakSeg4samples$loss, PeakSeg4samples$loss$sample.id)
+err.list <- split(errors, errors$sample.id)
+signal.list <- split(PeakSeg4samples$signal, PeakSeg4samples$signal$sample.id)
+exact.dfs <- NULL
+intervals <- NULL
+for(sample.id in names(loss.list)){
+  one <- loss.list[[sample.id]]
+  exact.df <- with(one, exactModelSelection(error, peaks))
+  err <- err.list[[sample.id]]
+  rownames(err) <- err$peaks
+  signal <- signal.list[[sample.id]]
+  exact.df$errors <- err[as.character(exact.df$model.complexity), "errors"]
+  indices <- with(exact.df, {
+    largestContinuousMinimum(errors, max.log.lambda-min.log.lambda)
+  })
+  meta <- data.frame(sample.id, log.max.count=log(max(signal$count)))
+  exact.dfs <- rbind(exact.dfs, {
+    data.frame(meta, exact.df)
+  })
+  intervals <- rbind(intervals, {
+    data.frame(meta,
+               min.log.lambda=exact.df$min.log.lambda[indices$start],
+               max.log.lambda=exact.df$max.log.lambda[indices$end])
+  })
+}
+
+what.peaks <- "peaks $p_i^*(\\lambda)$"
+what.error <- "error $E_i(\\lambda)$"
+blank.df <- data.frame(x=10, what=what.peaks, sample.id="McGill0004")
+exact.peaks <- data.frame(exact.dfs, what=what.peaks)
+exact.error <- data.frame(exact.dfs, what=what.error)
+funplot <- 
+ggplot()+
+  geom_segment(aes(min.log.lambda, model.complexity,
+                   xend=max.log.lambda, yend=model.complexity),
+               data=exact.peaks, size=2)+
+  geom_segment(aes(min.log.lambda, errors,
+                   xend=max.log.lambda, yend=errors),
+               data=exact.error, size=2)+
+  geom_blank(aes(x, 0), data=blank.df)+
+  theme_bw()+
+  theme(panel.margin=grid::unit(0, "cm"))+
+  facet_grid(what ~ sample.id, scales="free_y", space="free_y")+
+  scale_x_continuous("$\\log \\lambda$", limits=c(7, 14),
+                     breaks=seq(8, 12, by=2))+
+  ylab("")
+options(tikzDocumentDeclaration="\\documentclass{beamer}\\usepackage{amsmath,amssymb,amsthm}",
+        tikzMetricsDictionary="slideMetrics")
+
+zero.peaks <- subset(exact.peaks, errors==0)
+zero.error <- subset(exact.error, errors==0)
+funplot <- 
+ggplot()+
+  geom_segment(aes(min.log.lambda, model.complexity,
+                   xend=max.log.lambda, yend=model.complexity),
+               data=zero.peaks, size=3, color="green")+
+  geom_segment(aes(min.log.lambda, errors,
+                   xend=max.log.lambda, yend=errors),
+               data=zero.error, size=3, color="green")+
+  geom_segment(aes(min.log.lambda, model.complexity,
+                   xend=max.log.lambda, yend=model.complexity),
+               data=exact.peaks, size=2)+
+  geom_segment(aes(min.log.lambda, errors,
+                   xend=max.log.lambda, yend=errors),
+               data=exact.error, size=2)+
+  geom_blank(aes(x, 0), data=blank.df)+
+  theme_bw()+
+  theme(panel.margin=grid::unit(0, "cm"))+
+  facet_grid(what ~ sample.id, scales="free", space="free")+
+  scale_x_continuous("$\\log \\lambda$", limits=c(7, 14),
+                     breaks=seq(8, 12, by=2))+
+  ylab("")
+
+what.intervals <- data.frame(intervals, what=what.error)
+what.intervals$log.lambda <- what.intervals$max.log.lambda
+left.intervals <- subset(what.intervals, is.finite(min.log.lambda))
+left.intervals$log.lambda <- left.intervals$min.log.lambda
+target.text <-
+  rbind(data.frame(label="$\\overline L_i$", what.intervals, hjust=1),
+        data.frame(label="$\\underline L_i$", left.intervals, hjust=0))
+tsize <- 3
+fun2 <- funplot+
+  geom_text(aes(log.lambda, 1.5, label=label),
+            data=target.text)+
+  geom_point(aes(min.log.lambda, 0), shape=21, fill="white",
+             data=left.intervals,
+             size=tsize)+
+  geom_point(aes(max.log.lambda, 0), shape=21, fill="black",
+             data=what.intervals, size=tsize)
+
+max.margin <- function
+### Support vector interval regression for separable data. The idea is
+### that we first normalize the feature matrix, giving normalized
+### features x_i in R^p. Then we use a linear function f(x_i) = w'x_i
+### + b to predict a log(lambda) that falls between all the log limits
+### L_i^left and L_i^right and maximizes the margin. So the
+### optimization problem is: max_{M,f} subject to, for all finite
+### limits, L_i^right - f(x_i) >= M and f(x_i) - L_i^left >= M. Since
+### we assume f is linear the problem becomes min_{w,b,M} -M subject
+### to -M - w'x - b >= -L_i^right and -M + w'x + b >= L_i^left. We
+### call M margin, w weights, b intercept.
+(features,
+### Matrix n x p of inputs: n signals, each with p features. We will
+### scale these internally.
+ limits,
+### Matrix n x 2 of output lambda. Each row corresponds to the lower
+### and upper bound of an interval on the log(lambda) which is optimal
+### with respect to annotation error. Lower bound can be -Inf and
+### upper bound can be Inf, which correspond to zero asymptotic
+### cost. 
+ verbose=0,
+ ...
+### ignored.
+ ){
+  ## reality checks.
+  stopifnot(nrow(features)==nrow(limits))
+  if(ncol(limits)!=2){
+    cat("str(limits)=\n")
+    str(limits)
+    stop("limits should be a 2-column matrix")
+  }
+  stopifnot(is.matrix(features))
+  
+  ## check if there are any flat error curves, which have no limits.
+  has.limits <- apply(is.finite(limits),1,any)
+  ## we train the model on this subset.
+  some.limits <- limits[has.limits,]
+  some.features <- features[has.limits,,drop=FALSE]
+
+  scaled <- scale(some.features)
+  mu <- attr(scaled,"scaled:center")
+  sigma <- attr(scaled,"scaled:scale")
+
+  n <- nrow(scaled)
+  p <- ncol(scaled)
+  vars <- make.ids(margin=1,intercept=1,weights=p)
+  constraints <- list(vars$margin*1 >= 0)
+  for(i in 1:n){
+    if(verbose >= 1)cat(sprintf("example constraints %5d / %5d",i,n))
+
+    left <- some.limits[i,1]
+    if(is.finite(left)){
+      ivars <- with(vars,{
+        intercept * 1 + sum(weights)*scaled[i,] + margin*-1
+      })
+      constraints <- c(constraints,list(ivars >= left))
+    }
+
+    right <- some.limits[i,2]
+    if(is.finite(right)){
+      ivars <- with(vars,{
+        intercept * -1 + sum(weights)*scaled[i,]*-1 +margin*-1
+      })
+      constraints <- c(constraints,list(ivars >=  - right))
+    }
+
+    if(verbose >= 1)cat("\n")
+
+  }
+  const.info <- standard.form.constraints(constraints,vars)
+  n.vars <- length(unlist(vars))
+  Dvec <- rep(1e-10,n.vars)
+  D <- diag(Dvec)
+  d <- rep(0,n.vars)
+  d[vars$margin] <- 1
+  if(verbose >= 1)cat(sprintf("solving for %d variables and %d constraints... ",
+              n.vars,length(constraints)))
+  sol <- solve.QP(D,d,const.info$A,const.info$b0)
+  if(verbose >= 1)cat("solved!\n")
+  sol$mu <- mu
+  sol$sigma <- sigma
+  sol$scaled <- scaled
+  sol$log.limits <- some.limits
+  sol$features <- some.features
+  sol$weights <- sol$solution[vars$weights]
+  sol$intercept <- sol$solution[vars$intercept]
+  sol$margin <- sol$solution[vars$margin]
+  ## this function will be applied to new data before applying the
+  ## model.
+  sol$normalize <- function(X){
+    mu.mat <- matrix(mu,nrow(X),ncol(X),byrow=TRUE)
+    s.mat <- matrix(sigma,nrow(X),ncol(X),byrow=TRUE)
+    (X-mu.mat)/s.mat
+  }
+  sol$f <- function(x){
+    sum(x*sol$weights)+sol$intercept
+  }
+  sol$predict <- function(X){
+    stopifnot(is.matrix(X))
+    X.norm <- sol$normalize(X)
+    weights.mat <- matrix(sol$weights,nrow(X),ncol(X),byrow=TRUE)
+    L.hat <- rowSums(X.norm * weights.mat) + sol$intercept
+    L.hat
+  }
+  sol$L.pred <- apply(scaled,1,sol$f)
+  sol$lambda.pred <- sol$predict(features)
+  sol
+### List of solver results. For a feature matrix X with p columns, you
+### can use list$predict(X) to get model estimates of log(lambda).
+}
+
+fit <- with(intervals, {
+  max.margin(cbind(log.max.count), cbind(min.log.lambda, max.log.lambda))
+})
+
+zero.error <- subset(exact.dfs, errors==0)
+
+intervals$predicted <- fit$L.pred
+min.x <- min(intervals$log.max.count)
+max.x <- max(intervals$log.max.count)
+small.slope <- (9-11)/(min.x-max.x)
+intervals$bad.pred <- small.slope*(intervals$log.max.count - max.x) + 11
+intervals$right.margin <- with(intervals, max.log.lambda-predicted)
+intervals$left.margin <- with(intervals, predicted-min.log.lambda)
+
+extreme <- subset(intervals, log.max.count %in% range(log.max.count))
+extreme$max.log.lambda[1] <- 11
+extreme$min.log.lambda[2] <- extreme$predicted[2]
+
+text.df <- zero.error %.%
+  ##filter(model.complexity != 3)
+  mutate(label=sprintf("%d peak%s", model.complexity,
+                   ifelse(model.complexity==1, "", "s")),
+         label.penalty=(min.log.lambda + max.log.lambda)/2)
+text.df$label.penalty[c(2, 6)] <- c(8.75, 10)
+
+tsize <- 2.5
+p <- 
+ggplot()+
+  geom_segment(aes(min.log.lambda, log.max.count,
+                   xend=max.log.lambda, yend=log.max.count),
+               data=intervals, size=1.5)+
+  geom_point(aes(min.log.lambda, log.max.count),
+             data=subset(zero.error, is.finite(min.log.lambda)),
+             size=tsize, pch=1)+
+  geom_point(aes(max.log.lambda, log.max.count),
+             data=zero.error,
+             size=tsize, pch=1)+
+  geom_point(aes(min.log.lambda, log.max.count),
+             data=subset(intervals, is.finite(min.log.lambda)),
+             size=tsize, shape=21, fill="white")+
+  geom_point(aes(max.log.lambda, log.max.count),
+             data=intervals,
+             size=tsize, shape=21, fill="black")+
+  geom_text(aes(label.penalty,
+                log.max.count +
+                ifelse(log.max.count==max(log.max.count), -1, 1)*0.03,
+                label=label,
+                vjust=ifelse(is.finite(min.log.lambda), 0.5, -0.5),
+                hjust=ifelse(log.max.count==max(log.max.count), 1, 0)),
+            data=text.df, size=3)+
+  geom_text(aes(max.log.lambda, log.max.count, label=sample.id,
+                hjust=ifelse(log.max.count==min(log.max.count), 0,
+                  ifelse(log.max.count==max(log.max.count), 1, 0.5))),
+            data=intervals, vjust=-0.5, size=3)+
+  coord_cartesian(xlim=c(7.7, 14))+
+  scale_x_continuous("penalty $\\log\\lambda_i$", limits=c(7.5, 13),
+                     minor_breaks=NULL)+
+  scale_y_continuous("feature $x_i = \\log\\max\\mathbf y_i$",
+                     minor_breaks=NULL)+
+  coord_flip(ylim=c(3.65, 6.15))
+
+modelsPlot <-
+  p+
+  geom_vline(aes(xintercept=8.5), color="blue")+
+  geom_segment(aes(min.log.lambda, log.max.count,
+                   xend=max.log.lambda, yend=log.max.count),
+               data=extreme[1,], color="red")+
+  geom_segment(aes(min.log.lambda, log.max.count,
+                   xend=predicted, yend=log.max.count),
+               data=intervals[1,], color="red")+
+  geom_line(aes(predicted, log.max.count), data=intervals, color="blue")+
+  geom_line(aes(bad.pred, log.max.count), data=intervals, color="blue")+
+  geom_text(aes(11.52, 5.7, label="0 errors\nlarge margin"),
+            hjust=0, vjust=0, color="blue", size=3)+
+  geom_text(aes(11, 5.7, label="0 errors\nsmall margin"),
+            hjust=0, vjust=1, color="blue", size=3)+
+  geom_text(aes(9, 5.7, label="1 error\nconstant"),
+            hjust=0, color="blue", size=3)
+
+options(tikzDocumentDeclaration="\\documentclass{article}\\usepackage{amsmath,amssymb,amsthm}",
+        tikzMetricsDictionary="tikzMetrics")
+tikz("figure-interval-regression.tex", h=3.5, w=4.5)
+print(modelsPlot)
+dev.off()

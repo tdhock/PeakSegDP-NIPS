@@ -1,0 +1,77 @@
+\documentclass{article}
+\usepackage{tikz}
+%\usepackage{fullpage}
+\usepackage{amsmath,amssymb}
+\newcommand{\ZZ}{\mathbb Z}
+\newcommand{\NN}{\mathbb N}
+\newcommand{\RR}{\mathbb R}
+\DeclareMathOperator*{\minimize}{minimize}
+\DeclareMathOperator*{\sign}{sign}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\Segments}{Segments}
+
+\begin{document}
+
+\section*{The Supervised Peak Detection Problem}
+
+\begin{itemize}
+\item A ChIP-seq profile on a single
+chromosome with $d$ base pairs\\ is a vector $\mathbf y=
+\left[
+  \begin{array}{ccc}
+    y_1 & \cdots & y_d
+  \end{array}
+\right]\in\ZZ_+^d$ of counts of aligned sequence reads. 
+\item A peak caller is a function $c:\ZZ_+^d
+  \rightarrow \{0, 1\}^d$\\
+  which returns 0 for background noise and 1 for a peak.
+\item We are given $i\in\{1,\dots, n\}$ profiles 
+  $\mathbf y_i$ and annotated regions $R_i$.
+\item The goal is to find a peak caller with minimal error on some
+test profiles:
+\begin{equation*}
+  \label{eq:min_error}
+  \minimize_c \sum_{i\in\text{test}} E[c(\mathbf y_i),  R_i],
+\end{equation*}
+where $E$ is the number of false positive and false negative regions $R_i$.
+\end{itemize}
+
+\newpage 
+
+\section*{Unsupervised PeakSeg: 
+constrained segmentation}
+
+\begin{equation*}
+  \label{argmin:constrained}
+  \begin{aligned}
+    \mathbf{\tilde m}^s(\mathbf y)  =\ 
+    &\argmin_{\mathbf m\in\RR^{d}} && 
+    %\sum_{j=1}^d \log\Lik
+    \rho
+    (\mathbf m, \mathbf y) \\
+    \\
+    &\text{such that} && \Segments(\mathbf m)=s,\\
+    \textbf{Peaks constraint:}
+    & && P_j(\mathbf m) \in\{0, 1\} \text{ for all } j\in\{1, \dots, d\}.
+  \end{aligned}
+\end{equation*}
+\begin{itemize}
+\item The Poisson loss function is $\rho(\mathbf m, \mathbf y)=
+  \sum_{j=1}^d m_j - y_j \log m_j$.
+\item$\Segments(\mathbf m)=1+\sum_{j=2}^d I(m_j \neq m_{j-1})$, where
+  $I$ is the indicator function.
+\item The indicator for a peak at base $j$ is 
+$
+  P_j(\mathbf m) = \sum_{k=1}^j \sign( m_k - m_{k-1} ).
+$
+\item Geometric interpretation of \textbf{Peaks constraint}:\\
+  segment mean must change up, down, up, down, ...
+\end{itemize}
+
+\newpage
+
+\section*{Supervised PeakSeg: learning a penalty function}
+
+\input{figure-interval-regression}
+
+\end{document}

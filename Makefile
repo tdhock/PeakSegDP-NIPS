@@ -38,3 +38,7 @@ figure-dp-peaks-interactive/index.html: figure-dp-peaks-interactive.R dp.peaks.i
 dp.peaks.interactive.RData: dp.peaks.interactive.R dp.peaks.regression.RData dp.peaks.baseline.RData
 	R --no-save < $<
 
+figure-interval-regression.tex: figure-interval-regression.R
+	R --no-save < $<
+intervalRegression.pdf: intervalRegression.tex figure-interval-regression.tex
+	pdflatex intervalRegression
