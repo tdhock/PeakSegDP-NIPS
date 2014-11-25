@@ -89,7 +89,7 @@ ggplot()+
   facet_grid(.~set.name, labeller=function(var, val){
     gsub("_", "\n", val)
   })+
-  ylab("algorithm")+
+  xlab("algorithm")+
   theme_bw()+
   theme(panel.margin=grid::unit(0, "cm"))+
   coord_flip()+

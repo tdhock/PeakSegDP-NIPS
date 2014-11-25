@@ -40,11 +40,24 @@ data.frame(biggest)
 ## We will make a plot for the window for which we have the biggest
 ## advantage, for each mark type.
 prefix <- "http://cbio.ensmp.fr/~thocking/chip-seq-chunk-db"
+chunks.file <- paste0(prefix, "/chunks.RData")
+u <- url(chunks.file)
+load(u)
+close(u)
+rownames(chunks) <- with(chunks, paste0(set.name, "/", chunk.id))
+
+ann.colors <-
+  c(noPeaks="#f6f4bf",
+    peakStart="#ffafaf",
+    peakEnd="#ff4c4c",
+    peaks="#a445ee")
 
 for(experiment.i in 1:nrow(biggest)){
   chunk.info <- biggest[experiment.i, ]
   experiment <- as.character(chunk.info$experiment)
   chunk.name <- as.character(chunk.info$chunk.name)
+  more.info <- chunks[chunk.name, ]
+  chunkChrom <- as.character(more.info$chunkChrom)
   cell.type <- as.character(chunk.info$cell.type)
   other.algo <-
     ifelse(experiment=="H3K4me3", "macs.trained", "hmcan.broad.trained")
@@ -63,9 +76,153 @@ for(experiment.i in 1:nrow(biggest)){
            param.name==default.param.val) %>%
     mutate(algorithm=sub("trained", "default", algorithm))
   show.params <- rbind(default.param, min.params)
+  rownames(show.params) <- show.params$algorithm
   ## TODO: download peaks and error regions for baseline, plot them
   ## alongside PeakSeg model.
   dp.error <- dp.peaks.error[[chunk.name]][[cell.type]]
+  dp.param <- show.params["PeakSegDP", "param.name"]
+  dp.regions <- subset(dp.error, param.name==dp.param)
   sample.ids <- as.character(unique(dp.error$sample.id))
   dp.peaks.samples <- dp.peaks[[chunk.name]]
+  dp.peak.list <- list()
+  for(sample.id in sample.ids){
+    dp.peak.list[[sample.id]] <-
+      data.frame(sample.id, dp.peaks.samples[[sample.id]][[dp.param]]) %>%
+        select(sample.id, chromStart, chromEnd)
+  }
+  ## Download count signal data.
+  counts.file <- file.path("data", chunk.name, "counts.RData")
+  load(counts.file)
+  sample.counts <- counts %>%
+    filter(sample.id %in% sample.ids)
+  tit <- with(chunk.info, paste({
+    ifelse(experiment=="H3K4me3", "sharp peaks,", "broadly enriched regions,")
+  }, cell.type, chunk.name))
+  sample.max.df <- sample.counts %>%
+    group_by(sample.id) %>%
+    summarise(count=max(coverage))
+  sample.max <- sample.max.df$count
+  names(sample.max) <- as.character(sample.max.df$sample.id)
+
+  u <- url(sprintf("%s/%s/error/%s.RData", prefix, chunk.name, trained.algo))
+  load(u)
+  close(u)
+  u <- url(sprintf("%s/%s/peaks/%s.RData", prefix, chunk.name, trained.algo))
+  load(u)
+  close(u)
+
+  show.peak.list <- list(PeakSegDP=do.call(rbind, dp.peak.list))
+  show.region.list <- list(PeakSegDP=dp.regions)
+  other.params <- subset(show.params, algorithm != "PeakSegDP")
+  trained.param <- subset(other.params, grepl("trained", algorithm))
+  trained.algo <- as.character(trained.param$algorithm)
+  for(param.i in 1:nrow(other.params)){
+    other.param <- other.params[param.i, ]
+    other.param.name <- other.param$param.name
+    algorithm <- as.character(other.param$algorithm)
+    show.region.list[[algorithm]] <- error %>%
+      filter(sample.id %in% sample.ids,
+             param.name == other.param.name)
+    show.peak.list[[algorithm]] <- peaks[[other.param.name]] %>%
+      filter(sample.id %in% sample.ids)
+  }
+
+  param.desc <-
+    c(PeakSegDP="maxPeaks",
+      macs="log(qvalue)",
+      hmcan="log(finalThreshold)")
+  compare.region.list <- list()
+  compare.peak.list <- list()
+  compare.label.list <- list()
+  for(algorithm.i in seq_along(show.peak.list)){
+    peak.df <- show.peak.list[[algorithm.i]]
+    sample.id <- as.character(peak.df$sample.id)
+    max.count <- sample.max[sample.id]
+    algorithm <- names(show.peak.list)[[algorithm.i]]
+    short.algo <- sub("[.].*", "", algorithm)
+    this.desc <- param.desc[[short.algo]]
+    y.mid <- -algorithm.i*2*max.count/10
+    compare.peak.list[[algorithm]] <-
+      data.frame(algorithm, y.mid, peak.df)
+    ## Also make regions.
+    height <- 2/3
+    region.df <- show.region.list[[algorithm]]
+    first <- peak.df[1,]
+    this.param <- show.params[algorithm, ]
+    compare.label.list[[algorithm]] <- with(region.df, {
+      data.frame(first, fp=sum(fp), fn=sum(fn),
+                 algorithm,
+                 y.mid=y.mid[1],
+                 param.desc=this.desc,
+                 param.name=this.param$param.name)
+    })
+    sample.id <- as.character(region.df$sample.id)
+    max.count <- sample.max[sample.id]
+    y.min <- (-algorithm.i*2-height)*max.count/10
+    y.max <- (-algorithm.i*2+height)*max.count/10
+    compare.region.list[[algorithm]] <-
+      data.frame(algorithm, y.min, y.max, region.df) %>%
+        select(sample.id, y.min, y.max,
+               chromStart, chromEnd, annotation, status)
+  }
+  compare.regions <- do.call(rbind, compare.region.list)
+  compare.peaks <- do.call(rbind, compare.peak.list)
+  first.incorrect <- compare.regions %>%
+    filter(sample.id==sample.id[1],
+           status != "correct")
+  compare.labels <- do.call(rbind, compare.label.list) %>%
+    mutate(chromStart=first.incorrect$chromStart[1])
+
+  selectedPlot <- 
+  ggplot()+
+  geom_tallrect(aes(xmin=chromStart/1e3, xmax=chromEnd/1e3,
+                    fill=annotation),
+                data=dp.regions,
+                color="grey",
+                alpha=1/2)+
+  geom_step(aes(chromStart/1e3, coverage),
+            data=sample.counts, color="grey50")+
+  ## geom_point(aes(chromStart/1e3, 0),
+  ##            data=profile.list$peaks,
+  ##            pch=1, size=2, color="deepskyblue")+
+  geom_text(aes(chromStart/1e3, y.mid,
+                label=sprintf("%s, %s=%.1f, %2d FP, %2d FN",
+                  algorithm, param.desc,
+                  as.numeric(as.character(param.name)),
+                  fp, fn)),
+            data=compare.labels, hjust=1, size=3)+
+  geom_rect(aes(xmin=chromStart/1e3, xmax=chromEnd/1e3,
+                ymin=y.min, ymax=y.max,
+                linetype=status),
+            data=compare.regions,
+            fill=NA, color="black", size=0.5)+
+  scale_linetype_manual("error type",
+                        values=c(correct=0,
+                          "false negative"=3,
+                          "false positive"=1))+
+  geom_segment(aes(chromStart/1e3, y.mid,
+                   xend=chromEnd/1e3, yend=y.mid),
+               data=compare.peaks, size=1.5, color="deepskyblue")+
+  theme_bw()+
+  coord_cartesian(xlim=with(more.info, c(expandStart, expandEnd)/1e3))+
+  theme(panel.margin=grid::unit(0, "cm"))+
+  facet_grid(sample.id ~ ., scales="free")+
+  scale_y_continuous("aligned read coverage",
+                     labels=function(x){
+                       sprintf("%.1f", x)
+                     },
+                     breaks=function(limits){
+                       limits[2]
+                     })+
+  xlab(paste("position on", chunkChrom, "(kilo base pairs)"))+
+  scale_fill_manual("annotation", values=ann.colors,
+                    breaks=names(ann.colors))+
+  ggtitle(tit)
+
+  png.file <- sprintf("figure-dp-peaks-train-%d.png", experiment.i)
+  png(png.file,
+      units="in", res=200, width=21, height=length(sample.ids))
+  print(selectedPlot)
+  dev.off()
+  system(paste("firefox", png.file))
 }
