@@ -44,3 +44,5 @@ intervalRegression.pdf: intervalRegression.tex figure-interval-regression.tex
 	pdflatex intervalRegression
 figure-4samples-just-regions.png: figure-PeakSeg-4samples.R
 	R --no-save < $<
+dp.peaks.train.RData: dp.peaks.train.R
+	R --no-save < $<

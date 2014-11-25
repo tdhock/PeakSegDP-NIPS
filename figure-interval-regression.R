@@ -351,7 +351,7 @@ ggplot()+
                     breaks=names(ann.colors))
 
 png("figure-PeakSeg-4samples-intervals-selected.png",
-    units="in", res=200, width=7, height=5)
+    units="in", res=200, width=7, height=4)
 print(selectedPlot)
 dev.off()
 ##system("display figure-PeakSeg-4samples-intervals-selected.png")
