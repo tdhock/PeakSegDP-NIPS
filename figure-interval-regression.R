@@ -261,20 +261,77 @@ ann.colors <-
     peakEnd="#ff4c4c",
     peaks="#a445ee")
 
+sample.ids <- unique(profile.list$regions$sample.id)
+compare.peak.list <-
+  list(PeakSeg=profile.list$peaks[, c("sample.id", "chromStart", "chromEnd")])
+sample.max.df <- PeakSeg4samples$signal %>%
+  group_by(sample.id) %>%
+  summarise(count=max(count))
+sample.max <- sample.max.df$count
+names(sample.max) <- as.character(sample.max.df$sample.id)
+for(algorithm in c("macs", "macs-default")){
+  compare.peak.list[[algorithm]] <- 
+  PeakSeg4samples$peaks[[algorithm]] %>%
+    filter(sample.id %in% sample.ids)
+}
+compare.region.list <- list()
+for(algorithm.i in seq_along(compare.peak.list)){
+  peak.df <- compare.peak.list[[algorithm.i]]
+  sample.id <- as.character(peak.df$sample.id)
+  max.count <- sample.max[sample.id]
+  algorithm <- names(compare.peak.list)[[algorithm.i]]
+  y.mid <- -algorithm.i*2*max.count/10
+  compare.peak.list[[algorithm.i]] <-
+    data.frame(algorithm, y.mid, peak.df)
+  ## Also make regions.
+  height <- 2/3
+  region.df <- PeakSeg4samples$regions[[algorithm]] 
+  sample.id <- as.character(region.df$sample.id)
+  max.count <- sample.max[sample.id]
+  y.min <- (-algorithm.i*2-height)*max.count/10
+  y.max <- (-algorithm.i*2+height)*max.count/10
+  compare.region.list[[algorithm.i]] <-
+    data.frame(algorithm, y.min, y.max, region.df) %>%
+      select(sample.id, y.min, y.max, chromStart, chromEnd, annotation, status)
+}
+
+compare.regions <- do.call(rbind, compare.region.list)
+compare.peaks <- do.call(rbind, compare.peak.list)
+
+algo.labels <- 
+c("macs-default"="macs default qvalue=0.05",
+  macs="macs trained qvalue=0.008",
+  PeakSeg="PeakSeg trained")
+compare.labels <- compare.peaks %>%
+  filter(sample.id=="McGill0322") %>%
+  mutate(label=algo.labels[as.character(algorithm)])
+
 selectedPlot <- 
 ggplot()+
   geom_tallrect(aes(xmin=chromStart/1e3, xmax=chromEnd/1e3,
                     fill=annotation),
                 data=profile.list$regions,
+                color="grey",
                 alpha=1/2)+
   geom_step(aes(first.base/1e3, count),
             data=PeakSeg4samples$signal, color="grey50")+
-  geom_point(aes(chromStart/1e3, 0),
-             data=profile.list$peaks,
-             pch=1, size=2, color="deepskyblue")+
-  geom_segment(aes(chromStart/1e3, 0,
-                   xend=chromEnd/1e3, yend=0),
-               data=profile.list$peaks, size=2, color="deepskyblue")+
+  ## geom_point(aes(chromStart/1e3, 0),
+  ##            data=profile.list$peaks,
+  ##            pch=1, size=2, color="deepskyblue")+
+  geom_text(aes(118120, y.mid, label=label),
+            data=compare.labels, hjust=1, size=3)+
+  geom_rect(aes(xmin=chromStart/1e3, xmax=chromEnd/1e3,
+                ymin=y.min, ymax=y.max,
+                linetype=status),
+            data=compare.regions,
+            fill=NA, color="black", size=0.5)+
+  scale_linetype_manual("error type",
+                        values=c(correct=0,
+                          "false negative"=3,
+                          "false positive"=1))+
+  geom_segment(aes(chromStart/1e3, y.mid,
+                   xend=chromEnd/1e3, yend=y.mid),
+               data=compare.peaks, size=1.5, color="deepskyblue")+
   coord_cartesian(xlim=c(118080, 118130))+
   theme_bw()+
   theme(panel.margin=grid::unit(0, "cm"))+
@@ -294,6 +351,7 @@ png("figure-PeakSeg-4samples-intervals-selected.png",
     units="in", res=200, width=7, height=5)
 print(selectedPlot)
 dev.off()
+##system("display figure-PeakSeg-4samples-intervals-selected.png")
  
 p <- 
 ggplot()+

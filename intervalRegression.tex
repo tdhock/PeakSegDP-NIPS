@@ -90,7 +90,11 @@ $\mathbf x_i = \left[\begin{array}{cc} \log\max \mathbf y_i & \log d_i
 sample $i$.
 \item For separable data:\\
 \input{figure-interval-regression}
-\item For real data: minimize a
+\end{itemize}
+
+\newpage
+
+For real data: minimize a
 smooth convex loss $\ell_i:\RR\rightarrow\RR_+$ which depends on the
 annotated region data $R_i$:
 \begin{equation*}
@@ -98,7 +102,6 @@ annotated region data $R_i$:
   \hat f = \argmin_f \sum_{i=1}^n
   \ell_i\left[ f(\mathbf x_i) \right].
 \end{equation*}
-\end{itemize}
 To make a prediction on a
 test sample with profile $\mathbf y$ and features $\mathbf x$,
 \begin{itemize}

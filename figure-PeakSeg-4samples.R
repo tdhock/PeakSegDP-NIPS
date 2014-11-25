@@ -1,5 +1,7 @@
-works_with_R("3.1.1", ggplot2="1.0",
-             dplyr="0.2", PeakSeg="1.0")
+works_with_R("3.1.1",
+             "tdhock/ggplot2@aac38b6c48c016c88123208d497d896864e74bd7",
+             dplyr="0.2",
+             PeakSeg="2014.11.24")
 
 load("PeakSeg4samples.RData")
 
@@ -150,7 +152,7 @@ ggplot()+
   }
 
   png(sprintf("figure-%s-4samples-with-peaks.png", model.name),
-      units="in", res=200, width=7, height=5)
+      units="in", res=200, width=7, height=4)
   print(with.peaks)
   dev.off()
     
@@ -161,7 +163,7 @@ ggplot()+
                 fill=NA, color="black", size=1)
 
   png(sprintf("figure-%s-4samples.png", model.name),
-      units="in", res=200, width=7, height=5)
+      units="in", res=200, width=7, height=4)
   print(with.peaks.errors)
   dev.off()
 }
@@ -184,14 +186,14 @@ just.regions <-
   coord_cartesian(xlim=c(118080, 118130))+
   geom_tallrect(aes(xmin=chromStart/1e3, xmax=chromEnd/1e3,
                     fill=annotation),
-                data=model.regions, alpha=1/2)+
+                data=model.regions, alpha=1/2, color="grey")+
   guides(linetype=guide_legend(order=2,
            override.aes=list(fill="white")))+
   geom_line(aes(first.base/1e3, count),
             data=PeakSeg4samples$signal, color="grey50")
 
 png(sprintf("figure-4samples-just-regions.png", model.name),
-    units="in", res=200, width=7, height=5)
+    units="in", res=200, width=7, height=4)
 print(just.regions)
 dev.off()
 
