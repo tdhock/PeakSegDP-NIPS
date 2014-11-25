@@ -318,20 +318,23 @@ ggplot()+
   ## geom_point(aes(chromStart/1e3, 0),
   ##            data=profile.list$peaks,
   ##            pch=1, size=2, color="deepskyblue")+
-  geom_text(aes(118120, y.mid, label=label),
-            data=compare.labels, hjust=1, size=3)+
-  geom_rect(aes(xmin=chromStart/1e3, xmax=chromEnd/1e3,
-                ymin=y.min, ymax=y.max,
-                linetype=status),
-            data=compare.regions,
-            fill=NA, color="black", size=0.5)+
-  scale_linetype_manual("error type",
-                        values=c(correct=0,
-                          "false negative"=3,
-                          "false positive"=1))+
-  geom_segment(aes(chromStart/1e3, y.mid,
-                   xend=chromEnd/1e3, yend=y.mid),
-               data=compare.peaks, size=1.5, color="deepskyblue")+
+  ## geom_text(aes(118120, y.mid, label=label),
+  ##           data=compare.labels, hjust=1, size=3)+
+  ## geom_rect(aes(xmin=chromStart/1e3, xmax=chromEnd/1e3,
+  ##               ymin=y.min, ymax=y.max,
+  ##               linetype=status),
+  ##           data=compare.regions,
+  ##           fill=NA, color="black", size=0.5)+
+  ## scale_linetype_manual("error type",
+  ##                       values=c(correct=0,
+  ##                         "false negative"=3,
+  ##                         "false positive"=1))+
+  ## geom_segment(aes(chromStart/1e3, y.mid,
+  ##                  xend=chromEnd/1e3, yend=y.mid),
+  ##              data=compare.peaks, size=1.5, color="deepskyblue")+
+  geom_segment(aes(chromStart/1e3, 0,
+                   xend=chromEnd/1e3, yend=0),
+               data=profile.list$peaks, size=1.5, color="deepskyblue")+
   coord_cartesian(xlim=c(118080, 118130))+
   theme_bw()+
   theme(panel.margin=grid::unit(0, "cm"))+
