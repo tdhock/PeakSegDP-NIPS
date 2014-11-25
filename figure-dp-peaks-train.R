@@ -116,7 +116,7 @@ for(experiment.i in 1:nrow(biggest)){
   other.params <- subset(show.params, algorithm != "PeakSegDP")
   trained.param <- subset(other.params, grepl("trained", algorithm))
   trained.algo <- as.character(trained.param$algorithm)
-  for(param.i in 1:nrow(other.params)){
+  for(param.i in 2:1){
     other.param <- other.params[param.i, ]
     other.param.name <- other.param$param.name
     algorithm <- as.character(other.param$algorithm)
@@ -133,6 +133,7 @@ for(experiment.i in 1:nrow(biggest)){
       hmcan="log(finalThreshold)")
   compare.region.list <- list()
   compare.peak.list <- list()
+  label.sample <- "McGill0107"
   compare.label.list <- list()
   for(algorithm.i in seq_along(show.peak.list)){
     peak.df <- show.peak.list[[algorithm.i]]
@@ -141,25 +142,31 @@ for(experiment.i in 1:nrow(biggest)){
     algorithm <- names(show.peak.list)[[algorithm.i]]
     short.algo <- sub("[.].*", "", algorithm)
     this.desc <- param.desc[[short.algo]]
-    y.mid <- -algorithm.i*2*max.count/10
+    ## if(algorithm.i==1){
+    ##   algorithm.i <- 1
+    ## }else{
+    ##   algorithm.i <- algorithm.i +1
+    ## }
+    y.mid <- -algorithm.i*4*max.count/10
     compare.peak.list[[algorithm]] <-
       data.frame(algorithm, y.mid, peak.df)
     ## Also make regions.
-    height <- 2/3
+    height <- 1
     region.df <- show.region.list[[algorithm]]
-    first <- peak.df[1,]
+    label.i <- which(peak.df$sample.id==label.sample)[1]
+    first <- peak.df[label.i, ]
     this.param <- show.params[algorithm, ]
     compare.label.list[[algorithm]] <- with(region.df, {
       data.frame(first, fp=sum(fp), fn=sum(fn),
                  algorithm,
-                 y.mid=y.mid[1],
+                 y.mid=y.mid[label.i],
                  param.desc=this.desc,
                  param.name=this.param$param.name)
     })
     sample.id <- as.character(region.df$sample.id)
     max.count <- sample.max[sample.id]
-    y.min <- (-algorithm.i*2-height)*max.count/10
-    y.max <- (-algorithm.i*2+height)*max.count/10
+    y.min <- (-algorithm.i*4-height)*max.count/10
+    y.max <- (-algorithm.i*4+height)*max.count/10
     compare.region.list[[algorithm]] <-
       data.frame(algorithm, y.min, y.max, region.df) %>%
         select(sample.id, y.min, y.max,
@@ -167,11 +174,22 @@ for(experiment.i in 1:nrow(biggest)){
   }
   compare.regions <- do.call(rbind, compare.region.list)
   compare.peaks <- do.call(rbind, compare.peak.list)
-  first.incorrect <- compare.regions %>%
-    filter(sample.id==sample.id[1],
-           status != "correct")
+  first <- dp.regions %>%
+    filter(sample.id==label.sample,
+           annotation=="peakStart")
   compare.labels <- do.call(rbind, compare.label.list) %>%
-    mutate(chromStart=first.incorrect$chromStart[1])
+    mutate(chromStart=first$chromStart[2],
+           sample.id=label.sample)
+
+  algo.colors <-
+    c(macs.default="#A6CEE3", macs.trained="#1F78B4", #lite dark blue
+      hmcan.broad.default="#A6CEE3", hmcan.broad.trained="#1F78B4", #lite dark blue
+      "#B2DF8A", "#33A02C", #green
+      "#FB9A99", "#E31A1C", #red
+      "#FDBF6F", "#FF7F00", #orange
+      "#CAB2D6", PeakSegDP="#6A3D9A", #purple
+      "#FFFF99", "#B15928") #yellow/brown
+  
 
   selectedPlot <- 
   ggplot()+
@@ -186,11 +204,11 @@ for(experiment.i in 1:nrow(biggest)){
   ##            data=profile.list$peaks,
   ##            pch=1, size=2, color="deepskyblue")+
   geom_text(aes(chromStart/1e3, y.mid,
-                label=sprintf("%s, %s=%.1f, %2d FP, %2d FN",
+                label=sprintf("%s, %s=%s, %2d FP, %2d FN ",
                   algorithm, param.desc,
-                  as.numeric(as.character(param.name)),
+                  substr(param.name, 1, 5),
                   fp, fn)),
-            data=compare.labels, hjust=1, size=3)+
+            data=compare.labels, hjust=1, vjust=0.25, size=2)+
   geom_rect(aes(xmin=chromStart/1e3, xmax=chromEnd/1e3,
                 ymin=y.min, ymax=y.max,
                 linetype=status),
@@ -201,18 +219,22 @@ for(experiment.i in 1:nrow(biggest)){
                           "false negative"=3,
                           "false positive"=1))+
   geom_segment(aes(chromStart/1e3, y.mid,
-                   xend=chromEnd/1e3, yend=y.mid),
-               data=compare.peaks, size=1.5, color="deepskyblue")+
+                   xend=chromEnd/1e3, yend=y.mid,
+                   color=algorithm),
+               data=compare.peaks, size=1)+
+  scale_color_manual(values=algo.colors)+
   theme_bw()+
   coord_cartesian(xlim=with(more.info, c(expandStart, expandEnd)/1e3))+
   theme(panel.margin=grid::unit(0, "cm"))+
-  facet_grid(sample.id ~ ., scales="free")+
+  facet_grid(sample.id ~ ., scales="free", labeller=function(var, val){
+    sub("McGill0", "", val)
+  })+
   scale_y_continuous("aligned read coverage",
                      labels=function(x){
                        sprintf("%.1f", x)
                      },
                      breaks=function(limits){
-                       limits[2]
+                       c(0, limits[2])
                      })+
   xlab(paste("position on", chunkChrom, "(kilo base pairs)"))+
   scale_fill_manual("annotation", values=ann.colors,
@@ -221,8 +243,8 @@ for(experiment.i in 1:nrow(biggest)){
 
   png.file <- sprintf("figure-dp-peaks-train-%d.png", experiment.i)
   png(png.file,
-      units="in", res=200, width=21, height=length(sample.ids))
+      units="in", res=200, width=8, height=length(sample.ids)/2)
   print(selectedPlot)
   dev.off()
-  system(paste("firefox", png.file))
+  ##system(paste("firefox", png.file))
 }
