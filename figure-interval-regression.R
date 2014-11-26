@@ -3,7 +3,7 @@ works_with_R("3.1.1",
              "tdhock/ggplot2@aac38b6c48c016c88123208d497d896864e74bd7",
              tikzDevice="0.7.0",
              quadmod="2013.8.23",
-             dplyr="0.2",
+             dplyr="0.3.0.2",
              "tdhock/animint@1246883c2cd75a773f598a12fca4a2af4c9160e9")
 
 load("PeakSeg4samples.RData")
@@ -12,19 +12,22 @@ error.list <- PeakSeg4samples$regions
 errors <- NULL
 for(peaks in 0:4){
   rname <- paste0("PeakSeg", peaks)
-  e <- error.list[[rname]] %.%
-    group_by(sample.id) %.%
+  e <- error.list[[rname]] %>%
+    group_by(sample.id) %>%
     summarise(errors=sum(fp+fn))
   errors <- rbind(errors, data.frame(peaks, e))
 }
 
-loss.list <- split(PeakSeg4samples$loss, PeakSeg4samples$loss$sample.id)
-err.list <- split(errors, errors$sample.id)
-signal.list <- split(PeakSeg4samples$signal, PeakSeg4samples$signal$sample.id)
+loss.list <- split(PeakSeg4samples$loss,
+                   PeakSeg4samples$loss$sample.id,
+                   drop=TRUE)
+err.list <- split(errors, errors$sample.id, drop=TRUE)
+signal.list <- split(PeakSeg4samples$signal,
+                     PeakSeg4samples$signal$sample.id, drop=TRUE)
 exact.dfs <- NULL
 intervals <- NULL
 for(sample.id in names(loss.list)){
-  one <- loss.list[[sample.id]]
+  one <- subset(loss.list[[sample.id]], peaks <= 4)
   exact.df <- with(one, exactModelSelection(error, peaks))
   err <- err.list[[sample.id]]
   rownames(err) <- err$peaks
@@ -33,7 +36,7 @@ for(sample.id in names(loss.list)){
   indices <- with(exact.df, {
     largestContinuousMinimum(errors, max.log.lambda-min.log.lambda)
   })
-  meta <- data.frame(sample.id, log.max.count=log(max(signal$count)))
+  meta <- data.frame(sample.id, log.max.count=log(max(signal$coverage)))
   exact.dfs <- rbind(exact.dfs, {
     data.frame(meta, exact.df)
   })
@@ -46,7 +49,7 @@ for(sample.id in names(loss.list)){
 
 what.peaks <- "peaks $p_i^*(\\lambda)$"
 what.error <- "error $E_i(\\lambda)$"
-blank.df <- data.frame(x=10, what=what.peaks, sample.id="McGill0004")
+blank.df <- data.frame(x=10, what=what.peaks, sample.id="McGill0002")
 exact.peaks <- data.frame(exact.dfs, what=what.peaks)
 exact.error <- data.frame(exact.dfs, what=what.error)
 funplot <- 
@@ -226,12 +229,33 @@ fit <- with(intervals, {
 zero.error <- subset(exact.dfs, errors==0)
 
 intervals$predicted <- fit$L.pred
+intervals$mid.log.lambda <- with(intervals, (max.log.lambda+min.log.lambda)/2)
+prediction.in.mid <- with(intervals, abs(mid.log.lambda-predicted) < 1e-6)
+## max margin line should be in the middle of one interval.
+stopifnot(any(prediction.in.mid)) 
 min.x <- min(intervals$log.max.count)
 max.x <- max(intervals$log.max.count)
 small.slope <- (9-11)/(min.x-max.x)
 intervals$bad.pred <- small.slope*(intervals$log.max.count - max.x) + 11
 intervals$right.margin <- with(intervals, max.log.lambda-predicted)
 intervals$left.margin <- with(intervals, predicted-min.log.lambda)
+min.log.count <- min(intervals$log.max.count)
+max.log.count <- max(intervals$log.max.count)
+seg.df <-
+  data.frame(min.log.lambda=9, min.log.count,
+             max.log.lambda=c(11, 11.5), max.log.count) %>%
+  mutate(slope=(min.log.lambda-max.log.lambda)/(min.log.count-max.log.count),
+         intercept=min.log.lambda-slope*min.log.count)
+reg.df <- rbind(seg.df[, c("slope", "intercept")],
+                data.frame(slope=0, intercept=8.5))
+count.grid <- c(4, 6)
+penalty.grid <- NULL
+for(reg.i in 1:nrow(reg.df)){
+  r <- reg.df[reg.i, ]
+  penalty.grid <- rbind(penalty.grid, {
+    data.frame(count.grid, log.lambda=r$slope * count.grid + r$intercept, reg.i)
+  })
+}
 
 extreme <- subset(intervals, log.max.count %in% range(log.max.count))
 extreme$max.log.lambda[1] <- 11
@@ -239,8 +263,8 @@ extreme$min.log.lambda[2] <- extreme$predicted[2]
 
 ## Plot the model that was selected by the large margin model.
 rownames(intervals) <- intervals$sample.id
-selected <- exact.dfs %.%
-  mutate(predicted=intervals[as.character(sample.id), "predicted"]) %.%
+selected <- exact.dfs %>%
+  mutate(predicted=intervals[as.character(sample.id), "predicted"]) %>%
   filter(min.log.lambda < predicted & predicted < max.log.lambda)
 
 profile.list <- list()
@@ -250,7 +274,8 @@ for(sample.i in 1:nrow(selected)){
   print(model.name)
   for(data.type in c("regions", "peaks")){
     profile.list[[data.type]] <- rbind(profile.list[[data.type]], {
-      subset(PeakSeg4samples[[data.type]][[model.name]], sample.id==r$sample.id)
+      subset(PeakSeg4samples[[data.type]][[model.name]],
+             sample.id==as.character(r$sample.id))
     })
   }
 }
@@ -266,45 +291,9 @@ compare.peak.list <-
   list(PeakSeg=profile.list$peaks[, c("sample.id", "chromStart", "chromEnd")])
 sample.max.df <- PeakSeg4samples$signal %>%
   group_by(sample.id) %>%
-  summarise(count=max(count))
+  summarise(count=max(coverage))
 sample.max <- sample.max.df$count
 names(sample.max) <- as.character(sample.max.df$sample.id)
-for(algorithm in c("macs", "macs-default")){
-  compare.peak.list[[algorithm]] <- 
-  PeakSeg4samples$peaks[[algorithm]] %>%
-    filter(sample.id %in% sample.ids)
-}
-compare.region.list <- list()
-for(algorithm.i in seq_along(compare.peak.list)){
-  peak.df <- compare.peak.list[[algorithm.i]]
-  sample.id <- as.character(peak.df$sample.id)
-  max.count <- sample.max[sample.id]
-  algorithm <- names(compare.peak.list)[[algorithm.i]]
-  y.mid <- -algorithm.i*2*max.count/10
-  compare.peak.list[[algorithm.i]] <-
-    data.frame(algorithm, y.mid, peak.df)
-  ## Also make regions.
-  height <- 2/3
-  region.df <- PeakSeg4samples$regions[[algorithm]] 
-  sample.id <- as.character(region.df$sample.id)
-  max.count <- sample.max[sample.id]
-  y.min <- (-algorithm.i*2-height)*max.count/10
-  y.max <- (-algorithm.i*2+height)*max.count/10
-  compare.region.list[[algorithm.i]] <-
-    data.frame(algorithm, y.min, y.max, region.df) %>%
-      select(sample.id, y.min, y.max, chromStart, chromEnd, annotation, status)
-}
-
-compare.regions <- do.call(rbind, compare.region.list)
-compare.peaks <- do.call(rbind, compare.peak.list)
-
-algo.labels <- 
-c("macs-default"="macs default qvalue=0.05",
-  macs="macs trained qvalue=0.008",
-  PeakSeg="PeakSeg trained")
-compare.labels <- compare.peaks %>%
-  filter(sample.id=="McGill0322") %>%
-  mutate(label=algo.labels[as.character(algorithm)])
 
 selectedPlot <- 
 ggplot()+
@@ -313,7 +302,7 @@ ggplot()+
                 data=profile.list$regions,
                 color="grey",
                 alpha=1/2)+
-  geom_step(aes(first.base/1e3, count),
+  geom_step(aes(chromStart/1e3, coverage),
             data=PeakSeg4samples$signal, color="grey50")+
   ## geom_point(aes(chromStart/1e3, 0),
   ##            data=profile.list$peaks,
@@ -335,7 +324,7 @@ ggplot()+
   geom_segment(aes(chromStart/1e3, 0,
                    xend=chromEnd/1e3, yend=0),
                data=profile.list$peaks, size=1.5, color="deepskyblue")+
-  coord_cartesian(xlim=c(118080, 118130))+
+  coord_cartesian(xlim=c(118090, 118125))+
   theme_bw()+
   theme(panel.margin=grid::unit(0, "cm"))+
   facet_grid(sample.id ~ ., scales="free")+
@@ -364,9 +353,15 @@ ggplot()+
   geom_segment(aes(min.log.lambda, log.max.count,
                    xend=max.log.lambda, yend=log.max.count),
                data=extreme, color="red")+
-  geom_line(aes(predicted, log.max.count), data=intervals, color="blue")+
-  geom_line(aes(bad.pred, log.max.count), data=intervals, color="blue")+
-  geom_vline(aes(xintercept=8.3), color="blue")+
+  ## geom_line(aes(predicted, log.max.count), data=intervals, color="blue")+
+  ## geom_line(aes(bad.pred, log.max.count), data=intervals, color="blue")+
+  ## geom_vline(aes(xintercept=8.3), color="blue")+
+  geom_line(aes(log.lambda, count.grid, group=reg.i),
+            data=penalty.grid, color="blue")+
+  coord_cartesian(ylim=c(4.2, 5.7))+
+  ## geom_segment(aes(min.log.lambda, min.log.count,
+  ##                  xend=max.log.lambda, yend=max.log.count),
+  ##              data=seg.df, color="blue")+
   geom_text(aes(8.6, 5.3, label="1 error\nconstant"))+
   geom_text(aes(10.25, 5.3, label="0 errors\nsmall margin"))+
   geom_text(aes(11.5, 5.3, label="0 errors\nlarge margin"))+
@@ -379,7 +374,6 @@ ggplot()+
             data=zero.error, vjust=-0.5, size=3)+
   geom_text(aes(max.log.lambda, log.max.count, label=sample.id),
             data=intervals, hjust=0)+
-  coord_cartesian(xlim=c(7.7, 13))+
   ggtitle("max margin interval regression, margin in red")
 
 pdf("figure-PeakSeg-4samples-intervals.pdf", w=10)
@@ -387,12 +381,12 @@ print(p)
 dev.off()
  
 ## Plot the max margin regression line.
-text.df <- zero.error %.%
+text.df <- zero.error %>%
   ##filter(model.complexity != 3)
   mutate(label=sprintf("%d peak%s", model.complexity,
                    ifelse(model.complexity==1, "", "s")),
          label.penalty=(min.log.lambda + max.log.lambda)/2)
-text.df$label.penalty[c(2, 6)] <- c(8.75, 10)
+##text.df$label.penalty[c(2, 6)] <- c(8.75, 10)
 
 tsize <- 2.5
 p <- 
@@ -424,24 +418,23 @@ ggplot()+
                   ifelse(log.max.count==max(log.max.count), 1, 0.5))),
             data=intervals, vjust=-0.5, size=3)+
   coord_cartesian(xlim=c(7.7, 14))+
-  scale_x_continuous("penalty $\\log\\lambda_i$", limits=c(7.5, 13),
+  scale_x_continuous("penalty $\\log\\lambda_i$", 
                      minor_breaks=NULL)+
   scale_y_continuous("feature $x_i = \\log\\max\\mathbf y_i$",
                      minor_breaks=NULL)+
-  coord_flip(ylim=c(3.65, 6.15))
+  coord_flip(ylim=c(4, 6))
 
 modelsPlot <-
   p+
-  geom_vline(aes(xintercept=8.5), color="blue")+
-  geom_segment(aes(min.log.lambda, log.max.count,
-                   xend=max.log.lambda, yend=log.max.count),
-               data=extreme[1,], color="red")+
   geom_segment(aes(min.log.lambda, log.max.count,
                    xend=predicted, yend=log.max.count),
-               data=intervals[1,], color="red")+
-  geom_line(aes(predicted, log.max.count), data=intervals, color="blue")+
-  geom_line(aes(bad.pred, log.max.count), data=intervals, color="blue")+
-  geom_text(aes(11.52, 5.7, label="0 errors\nlarge margin"),
+               data=intervals["McGill0002",], color="red")+
+  ## geom_vline(aes(xintercept=8.5), color="blue")+
+  ## geom_line(aes(predicted, log.max.count), data=intervals, color="blue")+
+  ## geom_line(aes(bad.pred, log.max.count), data=intervals, color="blue")+
+  geom_line(aes(log.lambda, count.grid, group=reg.i),
+            data=penalty.grid, color="blue")+
+  geom_text(aes(12, 5.7, label="0 errors\nlarge margin"),
             hjust=0, vjust=0, color="blue", size=3)+
   geom_text(aes(11, 5.7, label="0 errors\nsmall margin"),
             hjust=0, vjust=1, color="blue", size=3)+

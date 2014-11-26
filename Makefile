@@ -1,4 +1,4 @@
-HOCKING-RIGAILL-chip-seq-NIPS.pdf: HOCKING-RIGAILL-chip-seq-NIPS.tex refs.bib figure-Segmentor-PeakSeg.png figure-dp-peaks-regression-dots.pdf
+HOCKING-RIGAILL-chip-seq-NIPS.pdf: HOCKING-RIGAILL-chip-seq-NIPS.tex refs.bib figure-Segmentor-PeakSeg.png figure-dp-peaks-regression-dots.pdf figure-4samples-just-regions.png intervalRegression.pdf figure-interval-regression.tex
 	rm -f *.aux *.bbl
 	pdflatex HOCKING-RIGAILL-chip-seq-NIPS
 	bibtex HOCKING-RIGAILL-chip-seq-NIPS
@@ -38,11 +38,13 @@ figure-dp-peaks-interactive/index.html: figure-dp-peaks-interactive.R dp.peaks.i
 dp.peaks.interactive.RData: dp.peaks.interactive.R dp.peaks.regression.RData dp.peaks.baseline.RData
 	R --no-save < $<
 
-figure-interval-regression.tex: figure-interval-regression.R
+figure-interval-regression.tex: figure-interval-regression.R PeakSeg4samples.RData
 	R --no-save < $<
 intervalRegression.pdf: intervalRegression.tex figure-interval-regression.tex
 	pdflatex intervalRegression
-figure-4samples-just-regions.png: figure-PeakSeg-4samples.R
+figure-4samples-just-regions.png: figure-PeakSeg-4samples.R PeakSeg4samples.RData
 	R --no-save < $<
 dp.peaks.train.RData: dp.peaks.train.R
+	R --no-save < $<
+PeakSeg4samples.RData: PeakSeg4samples.R dp.peaks.error.RData
 	R --no-save < $<
