@@ -1,7 +1,8 @@
 works_with_R("3.1.1",
              "tdhock/ggplot2@aac38b6c48c016c88123208d497d896864e74bd7",
+             "tdhock/PeakSegDP@5bcee97f494dcbc01a69e0fe178863564e9985bc",
+             data.table="1.9.4",
              reshape2="1.2.2",
-             xtable="1.7.3",
              dplyr="0.3.0.2")
 
 load("dp.peaks.train.RData")
@@ -83,6 +84,8 @@ for(experiment.i in 1:nrow(biggest)){
   dp.param <- show.params["PeakSegDP", "param.name"]
   dp.regions <- subset(dp.error, param.name==dp.param)
   sample.ids <- as.character(unique(dp.error$sample.id))
+  ## Try to show only a subset of samples.
+  sample.ids <- sprintf("McGill%04d", c(4, 5, 24, 26, 29, 107))
   dp.peaks.samples <- dp.peaks[[chunk.name]]
   dp.peak.list <- list()
   for(sample.id in sample.ids){
@@ -104,6 +107,10 @@ for(experiment.i in 1:nrow(biggest)){
   sample.max <- sample.max.df$count
   names(sample.max) <- as.character(sample.max.df$sample.id)
 
+  other.params <- subset(show.params, algorithm != "PeakSegDP")
+  trained.param <- subset(other.params, grepl("trained", algorithm))
+  trained.algo <- as.character(trained.param$algorithm)
+
   u <- url(sprintf("%s/%s/error/%s.RData", prefix, chunk.name, trained.algo))
   load(u)
   close(u)
@@ -113,9 +120,6 @@ for(experiment.i in 1:nrow(biggest)){
 
   show.peak.list <- list(PeakSegDP=do.call(rbind, dp.peak.list))
   show.region.list <- list(PeakSegDP=dp.regions)
-  other.params <- subset(show.params, algorithm != "PeakSegDP")
-  trained.param <- subset(other.params, grepl("trained", algorithm))
-  trained.algo <- as.character(trained.param$algorithm)
   for(param.i in 2:1){
     other.param <- other.params[param.i, ]
     other.param.name <- other.param$param.name
@@ -195,7 +199,7 @@ for(experiment.i in 1:nrow(biggest)){
   ggplot()+
   geom_tallrect(aes(xmin=chromStart/1e3, xmax=chromEnd/1e3,
                     fill=annotation),
-                data=dp.regions,
+                data=subset(dp.regions, sample.id %in% sample.ids),
                 color="grey",
                 alpha=1/2)+
   geom_step(aes(chromStart/1e3, coverage),
@@ -208,11 +212,14 @@ for(experiment.i in 1:nrow(biggest)){
                   algorithm, param.desc,
                   substr(param.name, 1, 5),
                   fp, fn)),
-            data=compare.labels, hjust=1, vjust=0.25, size=2)+
+            data=compare.labels, 
+            ##vjust=0.25, size=2,
+            size=2.5,
+            hjust=1)+
   geom_rect(aes(xmin=chromStart/1e3, xmax=chromEnd/1e3,
                 ymin=y.min, ymax=y.max,
                 linetype=status),
-            data=compare.regions,
+            data=subset(compare.regions, sample.id %in% sample.ids),
             fill=NA, color="black", size=0.5)+
   scale_linetype_manual("error type",
                         values=c(correct=0,
@@ -228,6 +235,7 @@ for(experiment.i in 1:nrow(biggest)){
   theme(panel.margin=grid::unit(0, "cm"))+
   facet_grid(sample.id ~ ., scales="free", labeller=function(var, val){
     sub("McGill0", "", val)
+    paste(val)
   })+
   scale_y_continuous("aligned read coverage",
                      labels=function(x){
@@ -243,7 +251,7 @@ for(experiment.i in 1:nrow(biggest)){
 
   png.file <- sprintf("figure-dp-peaks-train-%d.png", experiment.i)
   png(png.file,
-      units="in", res=200, width=8, height=length(sample.ids)/2)
+      units="in", res=200, width=8, height=length(sample.ids))
   print(selectedPlot)
   dev.off()
   ##system(paste("firefox", png.file))

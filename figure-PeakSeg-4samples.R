@@ -61,7 +61,7 @@ just.regions <-
   facet_grid(sample.id ~ ., scales="free")+
   scale_fill_manual("annotation", values=ann.colors,
                     breaks=names(ann.colors))+
-  coord_cartesian(xlim=c(118080, 118130))+
+  coord_cartesian(xlim=c(118090, 118125))+
   geom_tallrect(aes(xmin=chromStart/1e3, xmax=chromEnd/1e3,
                     fill=annotation),
                 data=model.regions, alpha=1/2, color="grey")+
@@ -71,7 +71,7 @@ just.regions <-
             data=PeakSeg4samples$signal, color="grey50")
 
 png("figure-4samples-just-regions.png",
-    units="in", res=200, width=7, height=4)
+    units="in", res=200, width=7, height=3.5)
 print(just.regions)
 dev.off()
 

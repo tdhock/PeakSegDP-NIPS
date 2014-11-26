@@ -248,7 +248,7 @@ seg.df <-
          intercept=min.log.lambda-slope*min.log.count)
 reg.df <- rbind(seg.df[, c("slope", "intercept")],
                 data.frame(slope=0, intercept=8.5))
-count.grid <- c(4, 6)
+count.grid <- c(4, 7)
 penalty.grid <- NULL
 for(reg.i in 1:nrow(reg.df)){
   r <- reg.df[reg.i, ]
@@ -340,7 +340,7 @@ ggplot()+
                     breaks=names(ann.colors))
 
 png("figure-PeakSeg-4samples-intervals-selected.png",
-    units="in", res=200, width=7, height=4)
+    units="in", res=200, width=7, height=3.5)
 print(selectedPlot)
 dev.off()
 ##system("display figure-PeakSeg-4samples-intervals-selected.png")
@@ -386,11 +386,11 @@ text.df <- zero.error %>%
   mutate(label=sprintf("%d peak%s", model.complexity,
                    ifelse(model.complexity==1, "", "s")),
          label.penalty=(min.log.lambda + max.log.lambda)/2)
-##text.df$label.penalty[c(2, 6)] <- c(8.75, 10)
 
-tsize <- 2.5
+ tsize <- 2.5
 p <- 
 ggplot()+
+  theme_grey()+
   geom_segment(aes(min.log.lambda, log.max.count,
                    xend=max.log.lambda, yend=log.max.count),
                data=intervals, size=1.5)+
@@ -406,7 +406,8 @@ ggplot()+
   geom_point(aes(max.log.lambda, log.max.count),
              data=intervals,
              size=tsize, shape=21, fill="black")+
-  geom_text(aes(label.penalty,
+  geom_text(aes(ifelse(label=="1 peak" | sample.id=="McGill0002",
+                       label.penalty+0.5, label.penalty),
                 log.max.count +
                 ifelse(log.max.count==max(log.max.count), -1, 1)*0.03,
                 label=label,
@@ -422,7 +423,7 @@ ggplot()+
                      minor_breaks=NULL)+
   scale_y_continuous("feature $x_i = \\log\\max\\mathbf y_i$",
                      minor_breaks=NULL)+
-  coord_flip(ylim=c(4, 6))
+  coord_flip(ylim=c(4, 6.2), xlim=c(7, 13.2))
 
 modelsPlot <-
   p+
@@ -434,15 +435,15 @@ modelsPlot <-
   ## geom_line(aes(bad.pred, log.max.count), data=intervals, color="blue")+
   geom_line(aes(log.lambda, count.grid, group=reg.i),
             data=penalty.grid, color="blue")+
-  geom_text(aes(12, 5.7, label="0 errors\nlarge margin"),
+  geom_text(aes(12.5, 5.8, label="0 errors\nlarge margin"),
             hjust=0, vjust=0, color="blue", size=3)+
-  geom_text(aes(11, 5.7, label="0 errors\nsmall margin"),
+  geom_text(aes(11, 5.8, label="0 errors\nsmall margin"),
             hjust=0, vjust=1, color="blue", size=3)+
-  geom_text(aes(9, 5.7, label="1 error\nconstant"),
+  geom_text(aes(9, 5.8, label="1 error\nconstant"),
             hjust=0, color="blue", size=3)
 
 options(tikzDocumentDeclaration="\\documentclass{article}\\usepackage{amsmath,amssymb,amsthm}",
         tikzMetricsDictionary="tikzMetrics")
-tikz("figure-interval-regression.tex", h=3.5, w=4.5)
+tikz("figure-interval-regression.tex", h=3, w=4.5)
 print(modelsPlot)
 dev.off()

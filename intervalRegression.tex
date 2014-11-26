@@ -59,8 +59,8 @@ constrained segmentation}
 \begin{itemize}
 \item The Poisson loss function is $\rho(\mathbf m, \mathbf y)=
   \sum_{j=1}^d m_j - y_j \log m_j$.
-\item$\Segments(\mathbf m)=1+\sum_{j=2}^d I(m_j \neq m_{j-1})$, where
-  $I$ is the indicator function.
+\item$\Segments(\mathbf m)\in\{1, \dots, d\}$ is the number of
+  piecewise constant segments of the mean vector $\mathbf m$.
 \item The indicator for a peak at base $j$ is 
 $
   P_j(\mathbf m) = \sum_{k=1}^j \sign( m_k - m_{k-1} ).
@@ -92,9 +92,14 @@ Change-point Detection using Max Margin Interval Regression. ICML
 $\mathbf x_i = \left[\begin{array}{cc} \log\max \mathbf y_i & \log d_i
 \end{array}\right]$,\\ where $d_i$ is the number of base pairs for 
 sample $i$.
+\item \textbf{Geometric interpretation: interval regression.} \\
+  the minimum error
+  \textcolor{blue}{penalty function $f$} \\
+  intersects the target
+  interval of penalty values for each sample.
 \item For separable data, find the 
-\textcolor{blue}{regression line $f$}
- with
+  \textcolor{blue}{penalty function$f$} 
+with
 \textcolor{red}{largest margin}:\\
 \input{figure-interval-regression}
 \end{itemize}

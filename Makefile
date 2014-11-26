@@ -1,4 +1,4 @@
-HOCKING-RIGAILL-chip-seq-NIPS.pdf: HOCKING-RIGAILL-chip-seq-NIPS.tex refs.bib figure-Segmentor-PeakSeg.png figure-dp-peaks-regression-dots.pdf figure-4samples-just-regions.png intervalRegression.pdf figure-interval-regression.tex
+HOCKING-RIGAILL-chip-seq-NIPS.pdf: HOCKING-RIGAILL-chip-seq-NIPS.tex refs.bib figure-Segmentor-PeakSeg.png figure-dp-peaks-regression-dots.pdf figure-4samples-just-regions.png intervalRegression.pdf figure-interval-regression.tex figure-dp-peaks-train-2.png
 	rm -f *.aux *.bbl
 	pdflatex HOCKING-RIGAILL-chip-seq-NIPS
 	bibtex HOCKING-RIGAILL-chip-seq-NIPS
@@ -47,4 +47,6 @@ figure-4samples-just-regions.png: figure-PeakSeg-4samples.R PeakSeg4samples.RDat
 dp.peaks.train.RData: dp.peaks.train.R
 	R --no-save < $<
 PeakSeg4samples.RData: PeakSeg4samples.R dp.peaks.error.RData
+	R --no-save < $<
+figure-dp-peaks-train-2.png: figure-dp-peaks-train.R dp.peaks.train.RData
 	R --no-save < $<
