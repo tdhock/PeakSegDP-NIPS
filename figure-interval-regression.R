@@ -248,7 +248,7 @@ seg.df <-
          intercept=min.log.lambda-slope*min.log.count)
 reg.df <- rbind(seg.df[, c("slope", "intercept")],
                 data.frame(slope=0, intercept=8.5))
-count.grid <- c(4, 7)
+count.grid <- c(3, 7)
 penalty.grid <- NULL
 for(reg.i in 1:nrow(reg.df)){
   r <- reg.df[reg.i, ]
@@ -323,7 +323,7 @@ ggplot()+
   ##              data=compare.peaks, size=1.5, color="deepskyblue")+
   geom_segment(aes(chromStart/1e3, 0,
                    xend=chromEnd/1e3, yend=0),
-               data=profile.list$peaks, size=1.5, color="deepskyblue")+
+               data=profile.list$peaks, size=1.5, color="#6A3D9A")+
   coord_cartesian(xlim=c(118090, 118125))+
   theme_bw()+
   theme(panel.margin=grid::unit(0, "cm"))+
@@ -340,7 +340,7 @@ ggplot()+
                     breaks=names(ann.colors))
 
 png("figure-PeakSeg-4samples-intervals-selected.png",
-    units="in", res=200, width=7, height=3.5)
+    units="in", res=200, width=7, height=4)
 print(selectedPlot)
 dev.off()
 ##system("display figure-PeakSeg-4samples-intervals-selected.png")
@@ -386,8 +386,11 @@ text.df <- zero.error %>%
   mutate(label=sprintf("%d peak%s", model.complexity,
                    ifelse(model.complexity==1, "", "s")),
          label.penalty=(min.log.lambda + max.log.lambda)/2)
-
- tsize <- 2.5
+rownames(text.df) <- with(text.df, paste(sample.id, model.complexity))
+text.df["McGill0004 2", "label.penalty"] <- 8.75
+text.df["McGill0091 1", "label.penalty"] <- 10
+text.df["McGill0002 2", "label.penalty"] <- 12
+tsize <- 2.5
 p <- 
 ggplot()+
   theme_grey()+
@@ -406,8 +409,7 @@ ggplot()+
   geom_point(aes(max.log.lambda, log.max.count),
              data=intervals,
              size=tsize, shape=21, fill="black")+
-  geom_text(aes(ifelse(label=="1 peak" | sample.id=="McGill0002",
-                       label.penalty+0.5, label.penalty),
+  geom_text(aes(label.penalty,
                 log.max.count +
                 ifelse(log.max.count==max(log.max.count), -1, 1)*0.03,
                 label=label,
@@ -423,7 +425,7 @@ ggplot()+
                      minor_breaks=NULL)+
   scale_y_continuous("feature $x_i = \\log\\max\\mathbf y_i$",
                      minor_breaks=NULL)+
-  coord_flip(ylim=c(4, 6.2), xlim=c(7, 13.2))
+  coord_flip(ylim=c(3.6, 6.3), xlim=c(7, 13.2))
 
 modelsPlot <-
   p+

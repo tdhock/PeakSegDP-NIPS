@@ -28,10 +28,10 @@ wide <-
         value.var="min") %>%
   mutate(baseline=ifelse(experiment=="H3K36me3",
            hmcan.broad.trained, macs.trained),
-         advantage=baseline-PeakSegDP) %>%
+         advantage=baseline-PeakSeg) %>%
   arrange(advantage)
 zero.error <- data.table(wide) %>%
-  filter(PeakSegDP==0)
+  filter(PeakSeg==0)
 biggest <- zero.error %>%
   group_by(experiment) %>%
   mutate(rank=rank(-advantage)) %>%
@@ -62,7 +62,7 @@ for(experiment.i in 1:nrow(biggest)){
   cell.type <- as.character(chunk.info$cell.type)
   other.algo <-
     ifelse(experiment=="H3K4me3", "macs.trained", "hmcan.broad.trained")
-  algorithms <- c("PeakSegDP", other.algo)
+  algorithms <- c("PeakSeg", other.algo)
   param.err <- dp.peaks.train %>%
     inner_join(chunk.info) %>%
     mutate(param.name=as.character(param.num))
@@ -81,7 +81,7 @@ for(experiment.i in 1:nrow(biggest)){
   ## TODO: download peaks and error regions for baseline, plot them
   ## alongside PeakSeg model.
   dp.error <- dp.peaks.error[[chunk.name]][[cell.type]]
-  dp.param <- show.params["PeakSegDP", "param.name"]
+  dp.param <- show.params["PeakSeg", "param.name"]
   dp.regions <- subset(dp.error, param.name==dp.param)
   sample.ids <- as.character(unique(dp.error$sample.id))
   ## Try to show only a subset of samples.
@@ -107,7 +107,7 @@ for(experiment.i in 1:nrow(biggest)){
   sample.max <- sample.max.df$count
   names(sample.max) <- as.character(sample.max.df$sample.id)
 
-  other.params <- subset(show.params, algorithm != "PeakSegDP")
+  other.params <- subset(show.params, algorithm != "PeakSeg")
   trained.param <- subset(other.params, grepl("trained", algorithm))
   trained.algo <- as.character(trained.param$algorithm)
 
@@ -118,8 +118,8 @@ for(experiment.i in 1:nrow(biggest)){
   load(u)
   close(u)
 
-  show.peak.list <- list(PeakSegDP=do.call(rbind, dp.peak.list))
-  show.region.list <- list(PeakSegDP=dp.regions)
+  show.peak.list <- list(PeakSeg=do.call(rbind, dp.peak.list))
+  show.region.list <- list(PeakSeg=dp.regions)
   for(param.i in 2:1){
     other.param <- other.params[param.i, ]
     other.param.name <- other.param$param.name
@@ -132,7 +132,7 @@ for(experiment.i in 1:nrow(biggest)){
   }
 
   param.desc <-
-    c(PeakSegDP="maxPeaks",
+    c(PeakSeg="maxPeaks",
       macs="log(qvalue)",
       hmcan="log(finalThreshold)")
   compare.region.list <- list()
@@ -191,7 +191,7 @@ for(experiment.i in 1:nrow(biggest)){
       "#B2DF8A", "#33A02C", #green
       "#FB9A99", "#E31A1C", #red
       "#FDBF6F", "#FF7F00", #orange
-      "#CAB2D6", PeakSegDP="#6A3D9A", #purple
+      "#CAB2D6", PeakSeg="#6A3D9A", #purple
       "#FFFF99", "#B15928") #yellow/brown
   
 
@@ -204,9 +204,6 @@ for(experiment.i in 1:nrow(biggest)){
                 alpha=1/2)+
   geom_step(aes(chromStart/1e3, coverage),
             data=sample.counts, color="grey50")+
-  ## geom_point(aes(chromStart/1e3, 0),
-  ##            data=profile.list$peaks,
-  ##            pch=1, size=2, color="deepskyblue")+
   geom_text(aes(chromStart/1e3, y.mid,
                 label=sprintf("%s, %s=%s, %2d FP, %2d FN ",
                   algorithm, param.desc,
@@ -225,6 +222,9 @@ for(experiment.i in 1:nrow(biggest)){
                         values=c(correct=0,
                           "false negative"=3,
                           "false positive"=1))+
+  geom_point(aes(chromStart/1e3, y.mid, color=algorithm),
+             data=compare.peaks,
+             pch=1, size=2)+
   geom_segment(aes(chromStart/1e3, y.mid,
                    xend=chromEnd/1e3, yend=y.mid,
                    color=algorithm),

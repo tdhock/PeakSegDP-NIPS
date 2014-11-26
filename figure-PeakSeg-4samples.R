@@ -71,7 +71,7 @@ just.regions <-
             data=PeakSeg4samples$signal, color="grey50")
 
 png("figure-4samples-just-regions.png",
-    units="in", res=200, width=7, height=3.5)
+    units="in", res=200, width=7, height=4)
 print(just.regions)
 dev.off()
 

@@ -24,7 +24,7 @@ load(counts.file)
 model.file <- file.path("data", set.name, chunk.id, "dp.model.RData")
 load(model.file)
 region.list <- split(regions, regions$sample.id)
-sample.ids <- c("McGill0322", "McGill0091", "McGill0002")
+sample.ids <- c("McGill0322", "McGill0091", "McGill0002", "McGill0004")
 
 chunk.peaks <- dp.peaks[[chunk.name]]
 chunk.peak.list <- list()

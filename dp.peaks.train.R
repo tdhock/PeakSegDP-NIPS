@@ -37,7 +37,7 @@ for(group.i in seq_along(dp.peaks.error)){
     sample.ids <- as.character(unique(dp.error$sample.id))
     all.error <-
       rbind(prev.error,
-            data.frame(algorithm="PeakSegDP", dp.error))
+            data.frame(algorithm="PeakSeg", dp.error))
     param.err <- all.error %>%
       filter(sample.id %in% sample.ids) %>%
       mutate(param.num=as.numeric(as.character(param.name))) %>%
