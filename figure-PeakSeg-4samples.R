@@ -86,7 +86,7 @@ ggplot()+
 
   if(model.name=="macs-default"){
     png(sprintf("figure-%s-4samples-nopeaks.png", model.name),
-        units="in", res=200, width=7, height=5)
+        units="in", res=200, width=7, height=4)
     print(no.peaks)
     dev.off()
 
@@ -99,7 +99,7 @@ ggplot()+
                data=model.peaks, size=2, color="deepskyblue")
 
     png(sprintf("figure-%s-4samples-noregions.png", model.name),
-        units="in", res=200, width=7, height=5)
+        units="in", res=200, width=7, height=4)
     print(no.regions)
     dev.off()
   }
@@ -136,7 +136,7 @@ ggplot()+
             data=PeakSeg4samples$signal, color="grey50")
   
   png(sprintf("figure-%s-4samples-just-regions.png", model.name),
-      units="in", res=200, width=7, height=5)
+      units="in", res=200, width=7, height=4)
   print(just.regions)
   dev.off()
   
