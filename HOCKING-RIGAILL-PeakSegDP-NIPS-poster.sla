@@ -211,7 +211,7 @@
             <para LINESPMode="1" LINESP="45"/>
             <ITEXT CPARENT="text" CH="PeakSeg showed state-of-the-art peak detection on both sharp H3K4me3 and broad H3K36me3 profiles."/>
             <para LINESPMode="1" LINESP="45"/>
-            <ITEXT CPARENT="text" CH="- Proposed constrained dynamic programming algorithm (cDPA) searches for most likely peak locations."/>
+            <ITEXT CPARENT="text" CH="- Heuristic/approximate constrained dynamic programming algorithm (cDPA) searches for most likely peak locations."/>
             <para LINESPMode="1" LINESP="45"/>
             <ITEXT CPARENT="text" CH="- First supervised peak detector that learns from manually annotated region labels with and without peaks."/>
             <para LINESPMode="1" LINESP="45"/>
@@ -220,9 +220,11 @@
             <ITEXT CPARENT="title" CH="Future work:"/>
             <para LINESPMode="1" LINESP="45"/>
             <para LINESPMode="1" LINESP="45"/>
-            <ITEXT CPARENT="text" CH="- Current dynamic programming algorithm has time complexity quadratic in number of data to segment (base pairs),"/>
+            <ITEXT CPARENT="text" CH="- Current algorithm (cDPA) has time complexity quadratic in number of data to segment (base pairs),"/>
             <para LINESPMode="1" LINESP="45"/>
             <ITEXT CPARENT="text" CH="  but pruned dynamic programming (Rigaill arXiv:1004.0887) is a log-linear time algorithm that could be used."/>
+            <para LINESPMode="1" LINESP="45"/>
+            <ITEXT CPARENT="text" CH="- An algorithm that provably recovers the PeakSeg model? (see paper for example where cDPA does not find PeakSeg)"/>
             <para LINESPMode="1" LINESP="45"/>
             <ITEXT CPARENT="text" CH="- Other features for penalty learning problem, based on Poisson segmentation model selection theory?"/>
             <para LINESPMode="1" LINESP="45"/>
